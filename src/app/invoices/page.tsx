@@ -18,11 +18,15 @@ export default function InvoicesPage() {
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
 
   useEffect(() => {
-    const allSales = getSales().sort((a, b) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-    setSales(allSales);
-    setFilteredSales(allSales);
+    async function loadSales() {
+      const allSales = await getSales();
+      const sortedSales = allSales.sort((a, b) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      setSales(sortedSales);
+      setFilteredSales(sortedSales);
+    }
+    loadSales();
   }, []);
 
   useEffect(() => {

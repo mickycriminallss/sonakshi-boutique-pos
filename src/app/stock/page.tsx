@@ -27,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { getItems, addItem, updateItem, getStockMovements, addStockMovement, saveItems } from '@/lib/store';
+import { getItems, addItem, updateItem, getStockMovements, addStockMovement } from '@/lib/store';
 import { formatCurrency } from '@/lib/utils';
 import { Item, StockMovement } from '@/lib/types';
 import { toast } from 'sonner';
@@ -81,8 +81,13 @@ export default function StockPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setItems(getItems());
-    setStockMovements(getStockMovements());
+    async function loadData() {
+      const itemsData = await getItems();
+      const movementsData = await getStockMovements();
+      setItems(itemsData);
+      setStockMovements(movementsData);
+    }
+    loadData();
   }, []);
 
   const filteredItems = items.filter(item => {
@@ -93,7 +98,7 @@ export default function StockPage() {
     return matchesSearch && matchesCategory;
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.itemId || !formData.quantity || !formData.reason) {
@@ -133,22 +138,24 @@ export default function StockPage() {
       createdAt: new Date().toISOString(),
     };
 
-    addStockMovement(movement);
-    updateItem({ ...item, stock: newStock, updatedAt: new Date().toISOString() });
+    await addStockMovement(movement);
+    await updateItem({ ...item, stock: newStock, updatedAt: new Date().toISOString() });
 
-    setItems(getItems());
-    setStockMovements(getStockMovements());
+    const updatedItems = await getItems();
+    const updatedMovements = await getStockMovements();
+    setItems(updatedItems);
+    setStockMovements(updatedMovements);
     setIsDialogOpen(false);
     setFormData(initialFormData);
     toast.success('Stock updated successfully');
   };
 
-  const handleExcelImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       try {
         const data = new Uint8Array(event.target?.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: 'array' });
@@ -161,16 +168,16 @@ export default function StockPage() {
 
         let imported = 0;
         let updated = 0;
-        const currentItems = getItems();
+        const currentItems = await getItems();
         
-        jsonData.forEach((row) => {
+        for (const row of jsonData) {
           const name = String(row['Item name*'] || row['Item Name'] || row['item name'] || row['Name'] || row['name'] || '').trim();
           const itemCode = String(row['Item code'] || row['Item Code'] || row['item code'] || row['Code'] || row['code'] || row['Barcode'] || row['barcode'] || '').trim();
           const category = String(row['Category'] || row['category'] || 'Other').trim();
           
           if (!name || !itemCode) {
             console.log('Skipping row - missing name or code:', { name, itemCode });
-            return;
+            continue;
           }
 
           const existingItem = currentItems.find(i => i.barcode === itemCode);
@@ -186,6 +193,7 @@ export default function StockPage() {
             existingItem.sellingPrice = salePrice;
             existingItem.stock = currentStock;
             existingItem.updatedAt = new Date().toISOString();
+            await updateItem(existingItem);
             updated++;
           } else {
             const newItem: Item = {
@@ -204,13 +212,13 @@ export default function StockPage() {
               updatedAt: new Date().toISOString(),
             };
 
-            currentItems.push(newItem);
+            await addItem(newItem);
             imported++;
           }
-        });
+        }
 
-        saveItems(currentItems);
-        setItems(getItems());
+        const updatedItems = await getItems();
+        setItems(updatedItems);
         toast.success(`Successfully imported ${imported} new items and updated ${updated} existing items`);
       } catch (error) {
         console.error('Import error:', error);

@@ -80,7 +80,11 @@ export default function BarcodesPage() {
   const printRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setItems(getItems());
+    async function loadItems() {
+      const itemsData = await getItems();
+      setItems(itemsData);
+    }
+    loadItems();
   }, []);
 
   const filteredItems = items.filter(item =>
@@ -230,7 +234,7 @@ export default function BarcodesPage() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.name || !formData.category || !formData.sellingPrice || !formData.barcode) {
@@ -260,8 +264,9 @@ export default function BarcodesPage() {
       updatedAt: new Date().toISOString(),
     };
 
-    addItem(itemData);
-    setItems(getItems());
+    await addItem(itemData);
+    const updatedItems = await getItems();
+    setItems(updatedItems);
     toast.success('Item added successfully');
     
     setSelectedItems(new Set([itemData.id]));
