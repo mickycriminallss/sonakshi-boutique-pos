@@ -22,8 +22,12 @@ export default function DashboardPage() {
   const [sales, setSales] = useState<Sale[]>([]);
 
   useEffect(() => {
-    setItems(getItems());
-    setSales(getSales());
+    async function loadData() {
+      const [itemsData, salesData] = await Promise.all([getItems(), getSales()]);
+      setItems(itemsData);
+      setSales(salesData);
+    }
+    loadData();
   }, []);
 
   const today = new Date();
