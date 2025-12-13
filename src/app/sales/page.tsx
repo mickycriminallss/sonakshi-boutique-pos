@@ -107,30 +107,30 @@ export default function SalesPage() {
       return;
     }
 
-    const { subtotal, totalDiscount, tax, total } = calculateTotals();
-    const invoiceNumber = await getNextInvoiceNumber();
-    
-    const sale: Sale = {
-      id: crypto.randomUUID(),
-      invoiceNumber,
-      items: saleItems,
-      subtotal,
-      discount: totalDiscount,
-      tax,
-      total,
-      paymentMethod,
-      customerName: customerName || undefined,
-      customerPhone: customerPhone || undefined,
-      createdAt: new Date().toISOString(),
-    };
-
     try {
+      const { subtotal, totalDiscount, tax, total } = calculateTotals();
+      const invoiceNumber = await getNextInvoiceNumber();
+      
+      const sale: Sale = {
+        id: crypto.randomUUID(),
+        invoiceNumber,
+        items: saleItems,
+        subtotal,
+        discount: totalDiscount,
+        tax,
+        total,
+        paymentMethod,
+        customerName: customerName || undefined,
+        customerPhone: customerPhone || undefined,
+        createdAt: new Date().toISOString(),
+      };
+
       await addSale(sale);
       toast.success(`Sale completed! Invoice: ${sale.invoiceNumber}`);
       
       // Print bill
       setTimeout(() => {
-        handlePrintBill(invoiceNumber);
+        handlePrintBill(sale.invoiceNumber);
       }, 500);
 
       // Reset form
@@ -141,7 +141,8 @@ export default function SalesPage() {
       setShowCheckout(false);
     } catch (error) {
       console.error('Error completing sale:', error);
-      toast.error('Failed to complete sale. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      toast.error(`Failed to complete sale: ${errorMessage}`);
     }
   };
 

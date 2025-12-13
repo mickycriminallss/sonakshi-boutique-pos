@@ -303,23 +303,30 @@ export async function adjustStock(itemId: string, quantity: number, type: 'in' |
 }
 
 export async function getNextInvoiceNumber(): Promise<string> {
+  // First, try to get and increment in one transaction-like operation
   const { data, error } = await supabase
     .from('invoice_counter')
     .select('counter')
     .eq('id', 1)
     .single();
   
-  if (error) {
+  if (error && error.code !== 'PGRST116') {
     console.error('Error fetching invoice counter:', error);
-    return 'INV-000001';
+    throw new Error(`Failed to fetch invoice counter: ${error.message}`);
   }
   
-  const nextCounter = (data?.counter || 0) + 1;
+  const currentCounter = data?.counter || 0;
+  const nextCounter = currentCounter + 1;
   
-  await supabase
+  // Update the counter
+  const { error: updateError } = await supabase
     .from('invoice_counter')
-    .update({ counter: nextCounter })
-    .eq('id', 1);
+    .upsert({ id: 1, counter: nextCounter }, { onConflict: 'id' });
+  
+  if (updateError) {
+    console.error('Error updating invoice counter:', updateError);
+    throw new Error(`Failed to update invoice counter: ${updateError.message}`);
+  }
   
   return `INV-${nextCounter.toString().padStart(6, '0')}`;
 }
