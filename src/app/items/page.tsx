@@ -218,17 +218,26 @@ export default function ItemsPage() {
         const jsonData = XLSX.utils.sheet_to_json(worksheet) as Record<string, unknown>[];
 
         let imported = 0;
+        let skipped = 0;
         const currentItems = await getItems();
         
         for (const row of jsonData) {
-          const name = String(row['Name'] || row['name'] || '');
-          const category = String(row['Category'] || row['category'] || 'Other');
+          // Map Excel columns to item fields
+          const name = String(row['Item name*'] || row['Item name'] || row['Name'] || row['name'] || '').trim();
+          const itemCode = String(row['Item code'] || row['Barcode'] || row['barcode'] || '').trim();
+          const category = String(row['Category'] || row['category'] || 'Other').trim();
           
-          if (!name) continue;
+          if (!name) {
+            skipped++;
+            continue;
+          }
 
-          const barcode = String(row['Barcode'] || row['barcode'] || generateBarcode());
+          // Generate barcode if item code exists, otherwise generate new
+          const barcode = itemCode || generateBarcode();
           
+          // Skip if barcode already exists
           if (currentItems.find(i => i.barcode === barcode)) {
+            skipped++;
             continue;
           }
 
@@ -238,24 +247,30 @@ export default function ItemsPage() {
             sku: String(row['SKU'] || row['sku'] || generateSKU(category, name)),
             barcode,
             category,
-            purchasePrice: parseFloat(String(row['Purchase Price'] || row['purchasePrice'] || row['Cost'] || '0')) || 0,
-            sellingPrice: parseFloat(String(row['Selling Price'] || row['sellingPrice'] || row['Price'] || '0')) || 0,
-            stock: parseInt(String(row['Stock'] || row['stock'] || row['Quantity'] || '0')) || 0,
-            minStock: parseInt(String(row['Min Stock'] || row['minStock'] || '5')) || 5,
-            unit: String(row['Unit'] || row['unit'] || 'pcs'),
+            purchasePrice: parseFloat(String(row['Purchase price'] || row['purchasePrice'] || row['Cost'] || '0')) || 0,
+            sellingPrice: parseFloat(String(row['Sale price'] || row['Selling Price'] || row['sellingPrice'] || row['Price'] || '0')) || 0,
+            stock: parseInt(String(row['Current stock quantity'] || row['Stock'] || row['stock'] || row['Quantity'] || '0')) || 0,
+            minStock: parseInt(String(row['Minimum stock quantity'] || row['Min Stock'] || row['minStock'] || '5')) || 5,
+            unit: String(row['Base Unit (x)'] || row['Unit'] || row['unit'] || 'pcs').toLowerCase(),
             description: String(row['Description'] || row['description'] || ''),
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           };
 
-          await addItem(newItem);
-          imported++;
+          try {
+            await addItem(newItem);
+            imported++;
+          } catch (error) {
+            console.error(`Failed to import item: ${name}`, error);
+            skipped++;
+          }
         }
 
         const updatedItems = await getItems();
         setItems(updatedItems);
-        toast.success(`Successfully imported ${imported} items`);
-      } catch {
+        toast.success(`Imported ${imported} items. Skipped ${skipped} items.`);
+      } catch (error) {
+        console.error('Import error:', error);
         toast.error('Failed to import Excel file. Please check the format.');
       }
     };
