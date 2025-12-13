@@ -156,26 +156,32 @@ export default function StockPage() {
         const worksheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(worksheet) as Record<string, unknown>[];
 
+        console.log('Excel columns:', Object.keys(jsonData[0] || {}));
+        console.log('First row sample:', jsonData[0]);
+
         let imported = 0;
         let updated = 0;
         const currentItems = getItems();
         
         jsonData.forEach((row) => {
-          const name = String(row['Item Name'] || row['item name'] || row['Name'] || row['name'] || '').trim();
-          const itemCode = String(row['Item Code'] || row['item code'] || row['Code'] || row['code'] || row['Barcode'] || row['barcode'] || '').trim();
-          const category = String(row['Category'] || row['category'] || 'Other');
+          const name = String(row['Item name*'] || row['Item Name'] || row['item name'] || row['Name'] || row['name'] || '').trim();
+          const itemCode = String(row['Item code'] || row['Item Code'] || row['item code'] || row['Code'] || row['code'] || row['Barcode'] || row['barcode'] || '').trim();
+          const category = String(row['Category'] || row['category'] || 'Other').trim();
           
-          if (!name || !itemCode) return;
+          if (!name || !itemCode) {
+            console.log('Skipping row - missing name or code:', { name, itemCode });
+            return;
+          }
 
           const existingItem = currentItems.find(i => i.barcode === itemCode);
           
-          const salePrice = parseFloat(String(row['Sale Price'] || row['sale price'] || row['Selling Price'] || row['sellingPrice'] || row['Price'] || '0')) || 0;
-          const purchasePrice = parseFloat(String(row['Purchase Price'] || row['purchase price'] || row['Cost'] || row['purchasePrice'] || '0')) || 0;
-          const currentStock = parseInt(String(row['Current Stock'] || row['current stock'] || row['Stock'] || row['stock'] || row['Quantity'] || '0')) || 0;
+          const salePrice = parseFloat(String(row['Sale price'] || row['Sale Price'] || row['sale price'] || row['Selling Price'] || row['sellingPrice'] || row['Price'] || '0')) || 0;
+          const purchasePrice = parseFloat(String(row['Purchase price'] || row['Purchase Price'] || row['purchase price'] || row['Cost'] || row['purchasePrice'] || '0')) || 0;
+          const currentStock = parseInt(String(row['Current stock quantity'] || row['Current Stock'] || row['current stock'] || row['Stock'] || row['stock'] || row['Quantity'] || '0')) || 0;
 
           if (existingItem) {
             existingItem.name = name;
-            existingItem.category = category;
+            existingItem.category = category || 'Other';
             existingItem.purchasePrice = purchasePrice;
             existingItem.sellingPrice = salePrice;
             existingItem.stock = currentStock;
@@ -185,9 +191,9 @@ export default function StockPage() {
             const newItem: Item = {
               id: crypto.randomUUID(),
               name,
-              sku: String(row['SKU'] || row['sku'] || `${category.substring(0, 3).toUpperCase()}-${Date.now().toString().slice(-6)}`),
+              sku: String(row['SKU'] || row['sku'] || `${(category || 'ITM').substring(0, 3).toUpperCase()}-${Date.now().toString().slice(-6)}`),
               barcode: itemCode,
-              category,
+              category: category || 'Other',
               purchasePrice,
               sellingPrice: salePrice,
               stock: currentStock,
