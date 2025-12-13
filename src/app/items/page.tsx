@@ -219,7 +219,9 @@ export default function ItemsPage() {
 
         let imported = 0;
         let skipped = 0;
+        let deduped = 0;
         const currentItems = await getItems();
+        const existingBarcodes = new Set(currentItems.map(i => i.barcode));
         
         for (const row of jsonData) {
           // Map Excel columns to item fields
@@ -232,20 +234,19 @@ export default function ItemsPage() {
             continue;
           }
 
-          // Generate barcode if item code exists, otherwise generate new
-          const barcode = itemCode || generateBarcode();
-          
-          // Skip if barcode already exists
-          if (currentItems.find(i => i.barcode === barcode)) {
-            skipped++;
+          // Resolve barcode and remove duplicates (in DB or current file)
+          const resolvedBarcode = itemCode || generateBarcode();
+          if (existingBarcodes.has(resolvedBarcode)) {
+            deduped++;
             continue;
           }
+          existingBarcodes.add(resolvedBarcode);
 
           const newItem: Item = {
             id: crypto.randomUUID(),
             name,
             sku: String(row['SKU'] || row['sku'] || generateSKU(category, name)),
-            barcode,
+            barcode: resolvedBarcode,
             category,
             purchasePrice: parseFloat(String(row['Purchase price'] || row['purchasePrice'] || row['Cost'] || '0')) || 0,
             sellingPrice: parseFloat(String(row['Sale price'] || row['Selling Price'] || row['sellingPrice'] || row['Price'] || '0')) || 0,
@@ -268,7 +269,7 @@ export default function ItemsPage() {
 
         const updatedItems = await getItems();
         setItems(updatedItems);
-        toast.success(`Imported ${imported} items. Skipped ${skipped} items.`);
+        toast.success(`Imported ${imported} items. Removed ${deduped} duplicates. Skipped ${skipped} rows.`);
       } catch (error) {
         console.error('Import error:', error);
         toast.error('Failed to import Excel file. Please check the format.');
