@@ -27,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { getItems, addItem, updateItem, deleteItem, generateBarcode, generateSKU, saveItems } from '@/lib/store';
+import { getItems, addItem, updateItem, deleteItem, generateBarcode, generateSKU } from '@/lib/store';
 import { formatCurrency } from '@/lib/utils';
 import { Item } from '@/lib/types';
 import { BarcodeGenerator } from '@/components/BarcodeGenerator';
@@ -94,7 +94,11 @@ export default function ItemsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setItems(getItems());
+    async function loadData() {
+      const data = await getItems();
+      setItems(data);
+    }
+    loadData();
   }, []);
 
   const filteredItems = items.filter(item => {
@@ -119,7 +123,7 @@ export default function ItemsPage() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.name || !formData.category || !formData.sellingPrice || !formData.barcode) {
@@ -149,18 +153,24 @@ export default function ItemsPage() {
       updatedAt: new Date().toISOString(),
     };
 
-    if (editingItem) {
-      updateItem(itemData);
-      toast.success('Item updated successfully');
-    } else {
-      addItem(itemData);
-      toast.success('Item added successfully');
-    }
+    try {
+      if (editingItem) {
+        await updateItem(itemData);
+        toast.success('Item updated successfully');
+      } else {
+        await addItem(itemData);
+        toast.success('Item added successfully');
+      }
 
-    setItems(getItems());
-    setIsDialogOpen(false);
-    setFormData(initialFormData);
-    setEditingItem(null);
+      const updatedItems = await getItems();
+      setItems(updatedItems);
+      setIsDialogOpen(false);
+      setFormData(initialFormData);
+      setEditingItem(null);
+    } catch (error) {
+      toast.error('Failed to save item');
+      console.error(error);
+    }
   };
 
   const handleEdit = (item: Item) => {
@@ -180,11 +190,17 @@ export default function ItemsPage() {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this item?')) {
-      deleteItem(id);
-      setItems(getItems());
-      toast.success('Item deleted successfully');
+      try {
+        await deleteItem(id);
+        const updatedItems = await getItems();
+        setItems(updatedItems);
+        toast.success('Item deleted successfully');
+      } catch (error) {
+        toast.error('Failed to delete item');
+        console.error(error);
+      }
     }
   };
 
@@ -193,7 +209,7 @@ export default function ItemsPage() {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       try {
         const data = new Uint8Array(event.target?.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: 'array' });
@@ -202,18 +218,18 @@ export default function ItemsPage() {
         const jsonData = XLSX.utils.sheet_to_json(worksheet) as Record<string, unknown>[];
 
         let imported = 0;
-        const currentItems = getItems();
+        const currentItems = await getItems();
         
-        jsonData.forEach((row) => {
+        for (const row of jsonData) {
           const name = String(row['Name'] || row['name'] || '');
           const category = String(row['Category'] || row['category'] || 'Other');
           
-          if (!name) return;
+          if (!name) continue;
 
           const barcode = String(row['Barcode'] || row['barcode'] || generateBarcode());
           
           if (currentItems.find(i => i.barcode === barcode)) {
-            return;
+            continue;
           }
 
           const newItem: Item = {
@@ -232,12 +248,12 @@ export default function ItemsPage() {
             updatedAt: new Date().toISOString(),
           };
 
-          currentItems.push(newItem);
+          await addItem(newItem);
           imported++;
-        });
+        }
 
-        saveItems(currentItems);
-        setItems(getItems());
+        const updatedItems = await getItems();
+        setItems(updatedItems);
         toast.success(`Successfully imported ${imported} items`);
       } catch {
         toast.error('Failed to import Excel file. Please check the format.');
