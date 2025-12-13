@@ -191,19 +191,22 @@ export async function addSale(sale: Sale): Promise<void> {
   }
   
   for (const saleItem of sale.items) {
-    const { error: updateError } = await supabase.rpc('decrement_stock', {
-      item_id: saleItem.itemId,
-      quantity: saleItem.quantity
-    });
+    const item = await getItemById(saleItem.itemId);
+    if (!item) continue;
+    
+    const newStock = item.stock - saleItem.quantity;
+    
+    const { error: updateError } = await supabase
+      .from('items')
+      .update({
+        stock: newStock,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', saleItem.itemId);
     
     if (updateError) {
-      await supabase
-        .from('items')
-        .update({
-          stock: supabase.raw(`stock - ${saleItem.quantity}`),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', saleItem.itemId);
+      console.error('Error updating stock:', updateError);
+      throw updateError;
     }
     
     await addStockMovement({

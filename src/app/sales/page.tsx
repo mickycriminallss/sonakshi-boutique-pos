@@ -20,8 +20,8 @@ export default function SalesPage() {
   const [showCheckout, setShowCheckout] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
 
-  const handleBarcodeScan = (barcode: string) => {
-    const item = getItemByBarcode(barcode);
+  const handleBarcodeScan = async (barcode: string) => {
+    const item = await getItemByBarcode(barcode);
     
     if (!item) {
       toast.error(`Item with barcode ${barcode} not found`);
@@ -56,16 +56,19 @@ export default function SalesPage() {
     }
   };
 
-  const updateQuantity = (itemId: string, newQuantity: number) => {
+  const updateQuantity = async (itemId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
       removeItem(itemId);
       return;
     }
 
-    const item = getItemByBarcode(saleItems.find(si => si.itemId === itemId)?.barcode || '');
-    if (item && newQuantity > item.stock) {
-      toast.error(`Only ${item.stock} items available in stock`);
-      return;
+    const saleItem = saleItems.find(si => si.itemId === itemId);
+    if (saleItem) {
+      const item = await getItemByBarcode(saleItem.barcode);
+      if (item && newQuantity > item.stock) {
+        toast.error(`Only ${item.stock} items available in stock`);
+        return;
+      }
     }
 
     setSaleItems(saleItems.map(si => {
@@ -98,17 +101,18 @@ export default function SalesPage() {
     setShowCheckout(true);
   };
 
-  const handleCompleteSale = () => {
+  const handleCompleteSale = async () => {
     if (saleItems.length === 0) {
       toast.error('Cart is empty');
       return;
     }
 
     const { subtotal, totalDiscount, tax, total } = calculateTotals();
+    const invoiceNumber = await getNextInvoiceNumber();
     
     const sale: Sale = {
       id: crypto.randomUUID(),
-      invoiceNumber: getNextInvoiceNumber(),
+      invoiceNumber,
       items: saleItems,
       subtotal,
       discount: totalDiscount,
@@ -120,23 +124,28 @@ export default function SalesPage() {
       createdAt: new Date().toISOString(),
     };
 
-    addSale(sale);
-    toast.success(`Sale completed! Invoice: ${sale.invoiceNumber}`);
-    
-    // Print bill
-    setTimeout(() => {
-      handlePrintBill();
-    }, 500);
+    try {
+      await addSale(sale);
+      toast.success(`Sale completed! Invoice: ${sale.invoiceNumber}`);
+      
+      // Print bill
+      setTimeout(() => {
+        handlePrintBill(invoiceNumber);
+      }, 500);
 
-    // Reset form
-    setSaleItems([]);
-    setCustomerName('');
-    setCustomerPhone('');
-    setPaymentMethod('cash');
-    setShowCheckout(false);
+      // Reset form
+      setSaleItems([]);
+      setCustomerName('');
+      setCustomerPhone('');
+      setPaymentMethod('cash');
+      setShowCheckout(false);
+    } catch (error) {
+      console.error('Error completing sale:', error);
+      toast.error('Failed to complete sale. Please try again.');
+    }
   };
 
-  const handlePrintBill = () => {
+  const handlePrintBill = async (invoiceNumber?: string) => {
     const printContent = printRef.current;
     if (!printContent) return;
 
@@ -144,14 +153,14 @@ export default function SalesPage() {
     if (!printWindow) return;
 
     const { subtotal, totalDiscount, tax, total } = calculateTotals();
-    const invoiceNumber = getNextInvoiceNumber();
+    const invoice = invoiceNumber || await getNextInvoiceNumber();
     const now = new Date();
 
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Invoice ${invoiceNumber}</title>
+          <title>Invoice ${invoice}</title>
           <style>
             @page {
               size: 80mm auto;
@@ -269,7 +278,7 @@ export default function SalesPage() {
 
           <div class="invoice-info">
             <div>
-              <span><strong>Invoice:</strong> ${invoiceNumber}</span>
+              <span><strong>Invoice:</strong> ${invoice}</span>
               <span>${now.toLocaleDateString('en-IN')}</span>
             </div>
             <div>
