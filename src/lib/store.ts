@@ -1,144 +1,324 @@
 import { Item, Sale, StockMovement } from './types';
+import { supabase } from './supabase';
 
-const STORAGE_KEYS = {
-  ITEMS: 'sonakshi_items',
-  SALES: 'sonakshi_sales',
-  STOCK_MOVEMENTS: 'sonakshi_stock_movements',
-  INVOICE_COUNTER: 'sonakshi_invoice_counter',
-};
-
-export function getItems(): Item[] {
-  if (typeof window === 'undefined') return [];
-  const data = localStorage.getItem(STORAGE_KEYS.ITEMS);
-  return data ? JSON.parse(data) : [];
+export async function getItems(): Promise<Item[]> {
+  const { data, error } = await supabase
+    .from('items')
+    .select('*')
+    .order('created_at', { ascending: false });
+  
+  if (error) {
+    console.error('Error fetching items:', error);
+    return [];
+  }
+  
+  return (data || []).map(item => ({
+    id: item.id,
+    name: item.name,
+    sku: item.sku,
+    barcode: item.barcode,
+    category: item.category,
+    purchasePrice: parseFloat(item.purchase_price),
+    sellingPrice: parseFloat(item.selling_price),
+    stock: item.stock,
+    minStock: item.min_stock,
+    unit: item.unit,
+    description: item.description || '',
+    createdAt: item.created_at,
+    updatedAt: item.updated_at,
+  }));
 }
 
-export function saveItems(items: Item[]): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(STORAGE_KEYS.ITEMS, JSON.stringify(items));
+export async function getItemByBarcode(barcode: string): Promise<Item | undefined> {
+  const { data, error } = await supabase
+    .from('items')
+    .select('*')
+    .eq('barcode', barcode)
+    .single();
+  
+  if (error || !data) return undefined;
+  
+  return {
+    id: data.id,
+    name: data.name,
+    sku: data.sku,
+    barcode: data.barcode,
+    category: data.category,
+    purchasePrice: parseFloat(data.purchase_price),
+    sellingPrice: parseFloat(data.selling_price),
+    stock: data.stock,
+    minStock: data.min_stock,
+    unit: data.unit,
+    description: data.description || '',
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  };
 }
 
-export function getItemByBarcode(barcode: string): Item | undefined {
-  const items = getItems();
-  return items.find(item => item.barcode === barcode);
+export async function getItemById(id: string): Promise<Item | undefined> {
+  const { data, error } = await supabase
+    .from('items')
+    .select('*')
+    .eq('id', id)
+    .single();
+  
+  if (error || !data) return undefined;
+  
+  return {
+    id: data.id,
+    name: data.name,
+    sku: data.sku,
+    barcode: data.barcode,
+    category: data.category,
+    purchasePrice: parseFloat(data.purchase_price),
+    sellingPrice: parseFloat(data.selling_price),
+    stock: data.stock,
+    minStock: data.min_stock,
+    unit: data.unit,
+    description: data.description || '',
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  };
 }
 
-export function getItemById(id: string): Item | undefined {
-  const items = getItems();
-  return items.find(item => item.id === id);
-}
-
-export function addItem(item: Item): void {
-  const items = getItems();
-  items.push(item);
-  saveItems(items);
-}
-
-export function updateItem(updatedItem: Item): void {
-  const items = getItems();
-  const index = items.findIndex(item => item.id === updatedItem.id);
-  if (index !== -1) {
-    items[index] = updatedItem;
-    saveItems(items);
+export async function addItem(item: Item): Promise<void> {
+  const { error } = await supabase
+    .from('items')
+    .insert({
+      id: item.id,
+      name: item.name,
+      sku: item.sku,
+      barcode: item.barcode,
+      category: item.category,
+      purchase_price: item.purchasePrice,
+      selling_price: item.sellingPrice,
+      stock: item.stock,
+      min_stock: item.minStock,
+      unit: item.unit,
+      description: item.description,
+      created_at: item.createdAt,
+      updated_at: item.updatedAt,
+    });
+  
+  if (error) {
+    console.error('Error adding item:', error);
+    throw error;
   }
 }
 
-export function deleteItem(id: string): void {
-  const items = getItems();
-  saveItems(items.filter(item => item.id !== id));
-}
-
-export function getSales(): Sale[] {
-  if (typeof window === 'undefined') return [];
-  const data = localStorage.getItem(STORAGE_KEYS.SALES);
-  return data ? JSON.parse(data) : [];
-}
-
-export function saveSales(sales: Sale[]): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(STORAGE_KEYS.SALES, JSON.stringify(sales));
-}
-
-export function addSale(sale: Sale): void {
-  const sales = getSales();
-  sales.push(sale);
-  saveSales(sales);
+export async function updateItem(updatedItem: Item): Promise<void> {
+  const { error } = await supabase
+    .from('items')
+    .update({
+      name: updatedItem.name,
+      sku: updatedItem.sku,
+      barcode: updatedItem.barcode,
+      category: updatedItem.category,
+      purchase_price: updatedItem.purchasePrice,
+      selling_price: updatedItem.sellingPrice,
+      stock: updatedItem.stock,
+      min_stock: updatedItem.minStock,
+      unit: updatedItem.unit,
+      description: updatedItem.description,
+      updated_at: updatedItem.updatedAt,
+    })
+    .eq('id', updatedItem.id);
   
-  const items = getItems();
-  sale.items.forEach(saleItem => {
-    const item = items.find(i => i.id === saleItem.itemId);
-    if (item) {
-      item.stock -= saleItem.quantity;
-      item.updatedAt = new Date().toISOString();
-    }
-  });
-  saveItems(items);
+  if (error) {
+    console.error('Error updating item:', error);
+    throw error;
+  }
+}
+
+export async function deleteItem(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('items')
+    .delete()
+    .eq('id', id);
   
-  sale.items.forEach(saleItem => {
-    const item = items.find(i => i.id === saleItem.itemId);
-    if (item) {
-      addStockMovement({
-        id: crypto.randomUUID(),
-        itemId: saleItem.itemId,
-        itemName: saleItem.name,
-        type: 'out',
-        quantity: saleItem.quantity,
-        reason: 'Sale',
-        reference: sale.invoiceNumber,
-        createdAt: new Date().toISOString(),
-      });
-    }
-  });
+  if (error) {
+    console.error('Error deleting item:', error);
+    throw error;
+  }
 }
 
-export function getStockMovements(): StockMovement[] {
-  if (typeof window === 'undefined') return [];
-  const data = localStorage.getItem(STORAGE_KEYS.STOCK_MOVEMENTS);
-  return data ? JSON.parse(data) : [];
+export async function getSales(): Promise<Sale[]> {
+  const { data, error } = await supabase
+    .from('sales')
+    .select('*')
+    .order('created_at', { ascending: false });
+  
+  if (error) {
+    console.error('Error fetching sales:', error);
+    return [];
+  }
+  
+  return (data || []).map(sale => ({
+    id: sale.id,
+    invoiceNumber: sale.invoice_number,
+    items: sale.items,
+    subtotal: parseFloat(sale.subtotal),
+    discount: parseFloat(sale.discount),
+    tax: parseFloat(sale.tax),
+    total: parseFloat(sale.total),
+    paymentMethod: sale.payment_method,
+    customerName: sale.customer_name,
+    customerPhone: sale.customer_phone,
+    createdAt: sale.created_at,
+  }));
 }
 
-export function saveStockMovements(movements: StockMovement[]): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(STORAGE_KEYS.STOCK_MOVEMENTS, JSON.stringify(movements));
-}
-
-export function addStockMovement(movement: StockMovement): void {
-  const movements = getStockMovements();
-  movements.push(movement);
-  saveStockMovements(movements);
-}
-
-export function adjustStock(itemId: string, quantity: number, type: 'in' | 'out' | 'adjustment', reason: string): void {
-  const items = getItems();
-  const item = items.find(i => i.id === itemId);
-  if (item) {
-    if (type === 'in') {
-      item.stock += quantity;
-    } else if (type === 'out') {
-      item.stock -= quantity;
-    } else {
-      item.stock = quantity;
-    }
-    item.updatedAt = new Date().toISOString();
-    saveItems(items);
+export async function addSale(sale: Sale): Promise<void> {
+  const { error } = await supabase
+    .from('sales')
+    .insert({
+      id: sale.id,
+      invoice_number: sale.invoiceNumber,
+      items: sale.items,
+      subtotal: sale.subtotal,
+      discount: sale.discount,
+      tax: sale.tax,
+      total: sale.total,
+      payment_method: sale.paymentMethod,
+      customer_name: sale.customerName,
+      customer_phone: sale.customerPhone,
+      created_at: sale.createdAt,
+    });
+  
+  if (error) {
+    console.error('Error adding sale:', error);
+    throw error;
+  }
+  
+  for (const saleItem of sale.items) {
+    const { error: updateError } = await supabase.rpc('decrement_stock', {
+      item_id: saleItem.itemId,
+      quantity: saleItem.quantity
+    });
     
-    addStockMovement({
+    if (updateError) {
+      await supabase
+        .from('items')
+        .update({
+          stock: supabase.raw(`stock - ${saleItem.quantity}`),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', saleItem.itemId);
+    }
+    
+    await addStockMovement({
       id: crypto.randomUUID(),
-      itemId,
-      itemName: item.name,
-      type,
-      quantity,
-      reason,
+      itemId: saleItem.itemId,
+      itemName: saleItem.name,
+      type: 'out',
+      quantity: saleItem.quantity,
+      reason: 'Sale',
+      reference: sale.invoiceNumber,
       createdAt: new Date().toISOString(),
     });
   }
 }
 
-export function getNextInvoiceNumber(): string {
-  if (typeof window === 'undefined') return 'INV-000001';
-  const counter = parseInt(localStorage.getItem(STORAGE_KEYS.INVOICE_COUNTER) || '0') + 1;
-  localStorage.setItem(STORAGE_KEYS.INVOICE_COUNTER, counter.toString());
-  return `INV-${counter.toString().padStart(6, '0')}`;
+export async function getStockMovements(): Promise<StockMovement[]> {
+  const { data, error } = await supabase
+    .from('stock_movements')
+    .select('*')
+    .order('created_at', { ascending: false });
+  
+  if (error) {
+    console.error('Error fetching stock movements:', error);
+    return [];
+  }
+  
+  return (data || []).map(movement => ({
+    id: movement.id,
+    itemId: movement.item_id,
+    itemName: movement.item_name,
+    type: movement.type,
+    quantity: movement.quantity,
+    reason: movement.reason,
+    reference: movement.reference,
+    createdAt: movement.created_at,
+  }));
+}
+
+export async function addStockMovement(movement: StockMovement): Promise<void> {
+  const { error } = await supabase
+    .from('stock_movements')
+    .insert({
+      id: movement.id,
+      item_id: movement.itemId,
+      item_name: movement.itemName,
+      type: movement.type,
+      quantity: movement.quantity,
+      reason: movement.reason,
+      reference: movement.reference,
+      created_at: movement.createdAt,
+    });
+  
+  if (error) {
+    console.error('Error adding stock movement:', error);
+    throw error;
+  }
+}
+
+export async function adjustStock(itemId: string, quantity: number, type: 'in' | 'out' | 'adjustment', reason: string): Promise<void> {
+  const item = await getItemById(itemId);
+  if (!item) return;
+  
+  let newStock = item.stock;
+  if (type === 'in') {
+    newStock += quantity;
+  } else if (type === 'out') {
+    newStock -= quantity;
+  } else {
+    newStock = quantity;
+  }
+  
+  const { error } = await supabase
+    .from('items')
+    .update({
+      stock: newStock,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', itemId);
+  
+  if (error) {
+    console.error('Error adjusting stock:', error);
+    throw error;
+  }
+  
+  await addStockMovement({
+    id: crypto.randomUUID(),
+    itemId,
+    itemName: item.name,
+    type,
+    quantity,
+    reason,
+    createdAt: new Date().toISOString(),
+  });
+}
+
+export async function getNextInvoiceNumber(): Promise<string> {
+  const { data, error } = await supabase
+    .from('invoice_counter')
+    .select('counter')
+    .eq('id', 1)
+    .single();
+  
+  if (error) {
+    console.error('Error fetching invoice counter:', error);
+    return 'INV-000001';
+  }
+  
+  const nextCounter = (data?.counter || 0) + 1;
+  
+  await supabase
+    .from('invoice_counter')
+    .update({ counter: nextCounter })
+    .eq('id', 1);
+  
+  return `INV-${nextCounter.toString().padStart(6, '0')}`;
 }
 
 export function generateBarcode(): string {
