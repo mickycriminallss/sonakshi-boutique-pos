@@ -1,7 +1,7 @@
 module.exports = {
   apps: [{
     name: 'boutique-pos',
-    script: 'bun',
+    script: 'C:\\Users\\vishu\\AppData\\Roaming\\npm\\node_modules\\bun\\bin\\bun.exe',
     args: 'dev',
     cwd: './',
     watch: false,
