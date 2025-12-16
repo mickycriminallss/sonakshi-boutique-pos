@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,7 +43,7 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
-const CATEGORIES = [
+const DEFAULT_CATEGORIES = [
   'Sarees',
   'Suits',
   'Lehengas',
@@ -92,6 +92,14 @@ export default function ItemsPage() {
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [formData, setFormData] = useState<ItemFormData>(initialFormData);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const categories = useMemo(() => {
+    const set = new Set(DEFAULT_CATEGORIES);
+    items.forEach((item) => {
+      if (item.category) set.add(item.category);
+    });
+    return Array.from(set);
+  }, [items]);
 
   useEffect(() => {
     async function loadData() {
@@ -360,11 +368,12 @@ export default function ItemsPage() {
                       <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
-                      <SelectContent className="bg-slate-800 border-slate-700">
-                        {CATEGORIES.map((cat) => (
-                          <SelectItem key={cat} value={cat} className="text-white">{cat}</SelectItem>
-                        ))}
-                      </SelectContent>
+                        <SelectContent className="bg-slate-800 border-slate-700">
+                          {categories.map((cat) => (
+                            <SelectItem key={cat} value={cat} className="text-white">{cat}</SelectItem>
+                          ))}
+                        </SelectContent>
+
                     </Select>
                   </div>
                 </div>
@@ -505,12 +514,13 @@ export default function ItemsPage() {
               <SelectTrigger className="w-[200px] bg-slate-800 border-slate-700 text-white">
                 <SelectValue placeholder="All Categories" />
               </SelectTrigger>
-              <SelectContent className="bg-slate-800 border-slate-700">
-                <SelectItem value="all" className="text-white">All Categories</SelectItem>
-                {CATEGORIES.map((cat) => (
-                  <SelectItem key={cat} value={cat} className="text-white">{cat}</SelectItem>
-                ))}
-              </SelectContent>
+                <SelectContent className="bg-slate-800 border-slate-700">
+                  <SelectItem value="all" className="text-white">All Categories</SelectItem>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat} value={cat} className="text-white">{cat}</SelectItem>
+                  ))}
+                </SelectContent>
+
             </Select>
           </div>
         </CardHeader>

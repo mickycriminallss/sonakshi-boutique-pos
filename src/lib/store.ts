@@ -8,7 +8,7 @@ export async function getItems(): Promise<Item[]> {
     .order('created_at', { ascending: false });
   
   if (error) {
-    console.error('Error fetching items:', error);
+    console.error('Error fetching items:', error?.message || error, error?.details || '');
     return [];
   }
   
@@ -149,7 +149,7 @@ export async function getSales(): Promise<Sale[]> {
     .order('created_at', { ascending: false });
   
   if (error) {
-    console.error('Error fetching sales:', error);
+    console.error('Error fetching sales:', error?.message || error, error?.details || '');
     return [];
   }
   
