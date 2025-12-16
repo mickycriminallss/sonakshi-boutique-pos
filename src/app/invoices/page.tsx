@@ -1,21 +1,32 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { getSales } from '@/lib/store';
+import { getSales, deleteSale } from '@/lib/store';
 import { Sale } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { FileText, Search, Printer, Eye } from 'lucide-react';
+import { FileText, Search, Printer, Eye, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export default function InvoicesPage() {
   const [sales, setSales] = useState<Sale[]>([]);
   const [filteredSales, setFilteredSales] = useState<Sale[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
+  const [saleToDelete, setSaleToDelete] = useState<Sale | null>(null);
 
   useEffect(() => {
     async function loadSales() {
@@ -45,6 +56,8 @@ export default function InvoicesPage() {
   const handlePrintInvoice = (sale: Sale) => {
     const printWindow = window.open('', '', 'width=800,height=600');
     if (!printWindow) return;
+    
+    const billWidth = localStorage.getItem('billPrintWidth') || '80mm';
 
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -53,7 +66,7 @@ export default function InvoicesPage() {
           <title>Invoice ${sale.invoiceNumber}</title>
           <style>
             @page {
-              size: 80mm auto;
+              size: ${billWidth} auto;
               margin: 0;
             }
             * {
@@ -65,7 +78,7 @@ export default function InvoicesPage() {
               font-family: 'Courier New', monospace;
               font-size: 12px;
               padding: 10mm;
-              width: 80mm;
+              width: ${billWidth};
               background: white;
               color: black;
             }
@@ -248,6 +261,25 @@ export default function InvoicesPage() {
     setSelectedSale(sale);
   };
 
+  const handleDeleteConfirm = async () => {
+    if (!saleToDelete) return;
+    
+    try {
+      await deleteSale(saleToDelete.id);
+      const updatedSales = await getSales();
+      const sortedSales = updatedSales.sort((a, b) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      setSales(sortedSales);
+      setFilteredSales(sortedSales);
+      toast.success(`Invoice ${saleToDelete.invoiceNumber} deleted successfully`);
+      setSaleToDelete(null);
+    } catch (error) {
+      console.error('Error deleting sale:', error);
+      toast.error('Failed to delete invoice');
+    }
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-IN', { 
@@ -384,26 +416,34 @@ export default function InvoicesPage() {
                       <TableCell className="text-white font-semibold text-right">
                         ₹{sale.total.toFixed(2)}
                       </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex gap-2 justify-end">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleViewDetails(sale)}
-                            className="text-blue-400 hover:text-blue-300 hover:bg-slate-800"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handlePrintInvoice(sale)}
-                            className="text-emerald-400 hover:text-emerald-300 hover:bg-slate-800"
-                          >
-                            <Printer className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex gap-2 justify-end">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleViewDetails(sale)}
+                              className="text-blue-400 hover:text-blue-300 hover:bg-slate-800"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handlePrintInvoice(sale)}
+                              className="text-emerald-400 hover:text-emerald-300 hover:bg-slate-800"
+                            >
+                              <Printer className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setSaleToDelete(sale)}
+                              className="text-red-400 hover:text-red-300 hover:bg-slate-800"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -508,9 +548,33 @@ export default function InvoicesPage() {
                 </Button>
               </div>
             </CardContent>
-          </Card>
-        </div>
-      )}
-    </div>
-  );
-}
+            </Card>
+          </div>
+        )}
+
+        <AlertDialog open={!!saleToDelete} onOpenChange={() => setSaleToDelete(null)}>
+          <AlertDialogContent className="bg-slate-900 border-slate-700">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-white">Delete Invoice?</AlertDialogTitle>
+              <AlertDialogDescription className="text-slate-400">
+                Are you sure you want to delete invoice <span className="font-mono font-semibold text-white">{saleToDelete?.invoiceNumber}</span>?
+                <br /><br />
+                This action will restore the stock for all items in this sale and cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="bg-slate-800 border-slate-700 text-white hover:bg-slate-700">
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteConfirm}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                Delete Invoice
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    );
+  }

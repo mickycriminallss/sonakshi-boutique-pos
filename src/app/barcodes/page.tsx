@@ -28,6 +28,7 @@ import {
   Search,
   Printer,
   Download,
+  Settings,
 } from 'lucide-react';
 
 const CATEGORIES = [
@@ -77,6 +78,9 @@ export default function BarcodesPage() {
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState<ItemFormData>(initialFormData);
+  const [showSettings, setShowSettings] = useState(false);
+  const [labelWidth, setLabelWidth] = useState('38');
+  const [labelHeight, setLabelHeight] = useState('25');
   const printRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -85,6 +89,11 @@ export default function BarcodesPage() {
       setItems(itemsData);
     }
     loadItems();
+    
+    const savedLabelWidth = localStorage.getItem('labelWidth');
+    const savedLabelHeight = localStorage.getItem('labelHeight');
+    if (savedLabelWidth) setLabelWidth(savedLabelWidth.replace('mm', ''));
+    if (savedLabelHeight) setLabelHeight(savedLabelHeight.replace('mm', ''));
   }, []);
 
   const filteredItems = items.filter(item =>
@@ -126,6 +135,8 @@ export default function BarcodesPage() {
     }
 
     const selectedItemsList = items.filter(item => selectedItems.has(item.id));
+    const savedLabelWidth = localStorage.getItem('labelWidth') || '57mm';
+    const savedLabelHeight = localStorage.getItem('labelHeight') || '32mm';
     
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -134,7 +145,7 @@ export default function BarcodesPage() {
           <title>Barcode Labels</title>
           <style>
             @page {
-              size: 2.25in 1.25in;
+              size: ${savedLabelWidth} ${savedLabelHeight};
               margin: 0;
             }
             body {
@@ -143,9 +154,9 @@ export default function BarcodesPage() {
               font-family: Arial, sans-serif;
             }
             .label {
-              width: 2.25in;
-              height: 1.25in;
-              padding: 0.1in;
+              width: ${savedLabelWidth};
+              height: ${savedLabelHeight};
+              padding: 2mm;
               box-sizing: border-box;
               page-break-after: always;
               display: flex;
@@ -275,14 +286,67 @@ export default function BarcodesPage() {
     setFormData(initialFormData);
   };
 
-  return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-white">Barcode Labels</h1>
-          <p className="text-slate-400 mt-1">Generate and print barcode labels</p>
-        </div>
-        <div className="flex gap-3">
+    const handleSaveSettings = () => {
+      localStorage.setItem('labelWidth', `${labelWidth}mm`);
+      localStorage.setItem('labelHeight', `${labelHeight}mm`);
+      setShowSettings(false);
+      toast.success('Label print settings saved');
+    };
+
+    return (
+      <div className="p-8">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-white">Barcode Labels</h1>
+            <p className="text-slate-400 mt-1">Generate and print barcode labels</p>
+          </div>
+          <div className="flex gap-3">
+            <Dialog open={showSettings} onOpenChange={setShowSettings}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="border-slate-700 text-slate-300 hover:bg-slate-800">
+                  <Settings className="mr-2 h-4 w-4" />
+                  Label Settings
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md bg-slate-900 border-slate-800">
+                <DialogHeader>
+                  <DialogTitle className="text-white">Barcode Label Configuration</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 pt-4">
+                  <div>
+                    <Label className="text-slate-300">Label Size</Label>
+                    <div className="grid grid-cols-2 gap-4 mt-2">
+                      <div>
+                        <Label htmlFor="barcodeWidth" className="text-slate-400 text-xs">Width (mm)</Label>
+                        <Input
+                          id="barcodeWidth"
+                          type="number"
+                          value={labelWidth}
+                          onChange={(e) => setLabelWidth(e.target.value)}
+                          className="bg-slate-800 border-slate-600 text-white mt-1"
+                          placeholder="38"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="barcodeHeight" className="text-slate-400 text-xs">Height (mm)</Label>
+                        <Input
+                          id="barcodeHeight"
+                          type="number"
+                          value={labelHeight}
+                          onChange={(e) => setLabelHeight(e.target.value)}
+                          className="bg-slate-800 border-slate-600 text-white mt-1"
+                          placeholder="25"
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-2">Your size: 38×25mm, Common: 50×30mm, 57×32mm</p>
+                  </div>
+                  <Button onClick={handleSaveSettings} className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-slate-900">
+                    Save Settings
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           <Dialog open={isDialogOpen} onOpenChange={(open) => {
             setIsDialogOpen(open);
             if (!open) {

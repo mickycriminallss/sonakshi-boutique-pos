@@ -222,6 +222,59 @@ export async function addSale(sale: Sale): Promise<void> {
   }
 }
 
+export async function deleteSale(saleId: string): Promise<void> {
+  const { data: sale, error: fetchError } = await supabase
+    .from('sales')
+    .select('*')
+    .eq('id', saleId)
+    .single();
+  
+  if (fetchError || !sale) {
+    console.error('Error fetching sale:', fetchError);
+    throw new Error('Sale not found');
+  }
+  
+  for (const saleItem of sale.items) {
+    const item = await getItemById(saleItem.itemId);
+    if (item) {
+      const newStock = item.stock + saleItem.quantity;
+      
+      const { error: updateError } = await supabase
+        .from('items')
+        .update({
+          stock: newStock,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', saleItem.itemId);
+      
+      if (updateError) {
+        console.error('Error restoring stock:', updateError);
+      }
+      
+      await addStockMovement({
+        id: crypto.randomUUID(),
+        itemId: saleItem.itemId,
+        itemName: saleItem.name,
+        type: 'in',
+        quantity: saleItem.quantity,
+        reason: 'Sale Deletion',
+        reference: sale.invoice_number,
+        createdAt: new Date().toISOString(),
+      });
+    }
+  }
+  
+  const { error: deleteError } = await supabase
+    .from('sales')
+    .delete()
+    .eq('id', saleId);
+  
+  if (deleteError) {
+    console.error('Error deleting sale:', deleteError);
+    throw deleteError;
+  }
+}
+
 export async function getStockMovements(): Promise<StockMovement[]> {
   const { data, error } = await supabase
     .from('stock_movements')

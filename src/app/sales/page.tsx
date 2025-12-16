@@ -10,7 +10,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { getItemByBarcode, addSale, getNextInvoiceNumber } from '@/lib/store';
 import { SaleItem, Sale } from '@/lib/types';
 import { toast } from 'sonner';
-import { Trash2, Plus, Minus, Printer, Tag } from 'lucide-react';
+import { Trash2, Plus, Minus, Printer, Tag, Settings } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
 export default function SalesPage() {
   const [saleItems, setSaleItems] = useState<SaleItem[]>([]);
@@ -18,7 +26,22 @@ export default function SalesPage() {
   const [customerPhone, setCustomerPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'upi' | 'credit'>('cash');
   const [showCheckout, setShowCheckout] = useState(false);
+  const [gstEnabled, setGstEnabled] = useState(true);
+  const [gstRate, setGstRate] = useState(18);
+  const [showSettings, setShowSettings] = useState(false);
+  const [billWidth, setBillWidth] = useState('80');
+  const [labelWidth, setLabelWidth] = useState('38');
+  const [labelHeight, setLabelHeight] = useState('25');
   const printRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    const savedBillWidth = localStorage.getItem('billPrintWidth');
+    const savedLabelWidth = localStorage.getItem('labelWidth');
+    const savedLabelHeight = localStorage.getItem('labelHeight');
+    if (savedBillWidth) setBillWidth(savedBillWidth.replace('mm', ''));
+    if (savedLabelWidth) setLabelWidth(savedLabelWidth.replace('mm', ''));
+    if (savedLabelHeight) setLabelHeight(savedLabelHeight.replace('mm', ''));
+  }, []);
 
   const handleBarcodeScan = async (barcode: string) => {
     const item = await getItemByBarcode(barcode);
@@ -88,7 +111,7 @@ export default function SalesPage() {
   const calculateTotals = () => {
     const subtotal = saleItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const totalDiscount = saleItems.reduce((sum, item) => sum + item.discount, 0);
-    const tax = (subtotal - totalDiscount) * 0.18; // 18% GST
+    const tax = gstEnabled ? (subtotal - totalDiscount) * (gstRate / 100) : 0;
     const total = subtotal - totalDiscount + tax;
     return { subtotal, totalDiscount, tax, total };
   };
@@ -133,12 +156,14 @@ export default function SalesPage() {
         handlePrintBill(sale.invoiceNumber);
       }, 500);
 
-      // Reset form
-      setSaleItems([]);
-      setCustomerName('');
-      setCustomerPhone('');
-      setPaymentMethod('cash');
-      setShowCheckout(false);
+        // Reset form
+        setSaleItems([]);
+        setCustomerName('');
+        setCustomerPhone('');
+        setPaymentMethod('cash');
+        setGstEnabled(true);
+        setGstRate(18);
+        setShowCheckout(false);
     } catch (error) {
       console.error('Error completing sale:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
@@ -156,6 +181,8 @@ export default function SalesPage() {
     const { subtotal, totalDiscount, tax, total } = calculateTotals();
     const invoice = invoiceNumber || await getNextInvoiceNumber();
     const now = new Date();
+    
+    const billWidth = localStorage.getItem('billPrintWidth') || '80mm';
 
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -164,7 +191,7 @@ export default function SalesPage() {
           <title>Invoice ${invoice}</title>
           <style>
             @page {
-              size: 80mm auto;
+              size: ${billWidth} auto;
               margin: 0;
             }
             * {
@@ -176,7 +203,7 @@ export default function SalesPage() {
               font-family: 'Courier New', monospace;
               font-size: 12px;
               padding: 10mm;
-              width: 80mm;
+              width: ${billWidth};
               background: white;
               color: black;
             }
@@ -315,16 +342,18 @@ export default function SalesPage() {
               <span>Subtotal:</span>
               <span>₹${subtotal.toFixed(2)}</span>
             </div>
-            ${totalDiscount > 0 ? `
-              <div>
-                <span>Discount:</span>
-                <span>- ₹${totalDiscount.toFixed(2)}</span>
-              </div>
-            ` : ''}
-            <div>
-              <span>GST (18%):</span>
-              <span>₹${tax.toFixed(2)}</span>
-            </div>
+              ${totalDiscount > 0 ? `
+                <div>
+                  <span>Discount:</span>
+                  <span>- ₹${totalDiscount.toFixed(2)}</span>
+                </div>
+              ` : ''}
+              ${tax > 0 ? `
+                <div>
+                  <span>GST (${gstRate}%):</span>
+                  <span>₹${tax.toFixed(2)}</span>
+                </div>
+              ` : ''}
             <div class="grand-total">
               <span>TOTAL:</span>
               <span>₹${total.toFixed(2)}</span>
@@ -356,6 +385,9 @@ export default function SalesPage() {
   const handlePrintBarcode = (item: SaleItem) => {
     const printWindow = window.open('', '', 'width=400,height=300');
     if (!printWindow) return;
+    
+    const labelWidth = localStorage.getItem('labelWidth') || '50mm';
+    const labelHeight = localStorage.getItem('labelHeight') || '30mm';
 
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -364,7 +396,7 @@ export default function SalesPage() {
           <title>Barcode Label</title>
           <style>
             @page {
-              size: 50mm 30mm;
+              size: ${labelWidth} ${labelHeight};
               margin: 0;
             }
             body {
@@ -372,8 +404,8 @@ export default function SalesPage() {
               display: flex;
               align-items: center;
               justify-content: center;
-              height: 30mm;
-              width: 50mm;
+              height: ${labelHeight};
+              width: ${labelWidth};
               margin: 0;
               padding: 2mm;
               text-align: center;
@@ -421,11 +453,79 @@ export default function SalesPage() {
 
   const { subtotal, totalDiscount, tax, total } = calculateTotals();
 
+  const handleSaveSettings = () => {
+    localStorage.setItem('billPrintWidth', `${billWidth}mm`);
+    localStorage.setItem('labelWidth', `${labelWidth}mm`);
+    localStorage.setItem('labelHeight', `${labelHeight}mm`);
+    setShowSettings(false);
+    toast.success('Print settings saved');
+  };
+
   return (
     <div className="p-8 max-w-7xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-white mb-2 font-serif">New Sale</h1>
-        <p className="text-slate-400">Scan items to add them to the cart</p>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-4xl font-bold text-white mb-2 font-serif">New Sale</h1>
+          <p className="text-slate-400">Scan items to add them to the cart</p>
+        </div>
+        <Dialog open={showSettings} onOpenChange={setShowSettings}>
+          <DialogTrigger asChild>
+            <Button variant="outline" className="border-slate-700 text-slate-300 hover:bg-slate-800">
+              <Settings className="mr-2 h-4 w-4" />
+              Print Settings
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="bg-slate-900 border-slate-700">
+            <DialogHeader>
+              <DialogTitle className="text-white">Printer Configuration</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-6 pt-4">
+              <div>
+                <Label htmlFor="billWidth" className="text-slate-300">Bill Width (mm)</Label>
+                <Input
+                  id="billWidth"
+                  type="number"
+                  value={billWidth}
+                  onChange={(e) => setBillWidth(e.target.value)}
+                  className="bg-slate-800 border-slate-600 text-white mt-2"
+                  placeholder="80"
+                />
+                <p className="text-xs text-slate-500 mt-1">Standard: 80mm, 58mm</p>
+              </div>
+              <div>
+                <Label className="text-slate-300">Barcode Label Size</Label>
+                <div className="grid grid-cols-2 gap-4 mt-2">
+                  <div>
+                    <Label htmlFor="labelWidth" className="text-slate-400 text-xs">Width (mm)</Label>
+                    <Input
+                      id="labelWidth"
+                      type="number"
+                      value={labelWidth}
+                      onChange={(e) => setLabelWidth(e.target.value)}
+                      className="bg-slate-800 border-slate-600 text-white mt-1"
+                      placeholder="38"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="labelHeight" className="text-slate-400 text-xs">Height (mm)</Label>
+                    <Input
+                      id="labelHeight"
+                      type="number"
+                      value={labelHeight}
+                      onChange={(e) => setLabelHeight(e.target.value)}
+                      className="bg-slate-800 border-slate-600 text-white mt-1"
+                      placeholder="25"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-slate-500 mt-1">Your size: 38×25mm, Common: 50×30mm</p>
+              </div>
+              <Button onClick={handleSaveSettings} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">
+                Save Settings
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {!showCheckout ? (
@@ -526,16 +626,38 @@ export default function SalesPage() {
                       <span>Subtotal:</span>
                       <span>₹{subtotal.toFixed(2)}</span>
                     </div>
-                    {totalDiscount > 0 && (
-                      <div className="flex justify-between text-slate-400">
-                        <span>Discount:</span>
-                        <span>- ₹{totalDiscount.toFixed(2)}</span>
+                      {totalDiscount > 0 && (
+                        <div className="flex justify-between text-slate-400">
+                          <span>Discount:</span>
+                          <span>- ₹{totalDiscount.toFixed(2)}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between text-slate-400">
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id="gst-enabled"
+                            checked={gstEnabled}
+                            onCheckedChange={(checked) => setGstEnabled(checked as boolean)}
+                            className="border-slate-600"
+                          />
+                          <Label htmlFor="gst-enabled" className="text-slate-400 cursor-pointer">
+                            GST
+                          </Label>
+                          {gstEnabled && (
+                            <Input
+                              type="number"
+                              value={gstRate}
+                              onChange={(e) => setGstRate(parseFloat(e.target.value) || 0)}
+                              className="w-16 h-8 bg-slate-800 border-slate-600 text-white text-sm px-2"
+                              min="0"
+                              max="100"
+                              step="0.1"
+                            />
+                          )}
+                          {gstEnabled && <span className="text-slate-400">%</span>}
+                        </div>
+                        <span>₹{tax.toFixed(2)}</span>
                       </div>
-                    )}
-                    <div className="flex justify-between text-slate-400">
-                      <span>GST (18%):</span>
-                      <span>₹{tax.toFixed(2)}</span>
-                    </div>
                     <div className="flex justify-between text-2xl font-bold text-white border-t border-slate-700 pt-3">
                       <span>Total:</span>
                       <span>₹{total.toFixed(2)}</span>
@@ -613,16 +735,38 @@ export default function SalesPage() {
                   <span>Subtotal:</span>
                   <span>₹{subtotal.toFixed(2)}</span>
                 </div>
-                {totalDiscount > 0 && (
-                  <div className="flex justify-between text-slate-400">
-                    <span>Discount:</span>
-                    <span>- ₹{totalDiscount.toFixed(2)}</span>
+                  {totalDiscount > 0 && (
+                    <div className="flex justify-between text-slate-400">
+                      <span>Discount:</span>
+                      <span>- ₹{totalDiscount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between text-slate-400">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="checkout-gst-enabled"
+                        checked={gstEnabled}
+                        onCheckedChange={(checked) => setGstEnabled(checked as boolean)}
+                        className="border-slate-600"
+                      />
+                      <Label htmlFor="checkout-gst-enabled" className="text-slate-400 cursor-pointer">
+                        GST
+                      </Label>
+                      {gstEnabled && (
+                        <Input
+                          type="number"
+                          value={gstRate}
+                          onChange={(e) => setGstRate(parseFloat(e.target.value) || 0)}
+                          className="w-16 h-8 bg-slate-800 border-slate-600 text-white text-sm px-2"
+                          min="0"
+                          max="100"
+                          step="0.1"
+                        />
+                      )}
+                      {gstEnabled && <span className="text-slate-400">%</span>}
+                    </div>
+                    <span>₹{tax.toFixed(2)}</span>
                   </div>
-                )}
-                <div className="flex justify-between text-slate-400">
-                  <span>GST (18%):</span>
-                  <span>₹{tax.toFixed(2)}</span>
-                </div>
                 <div className="flex justify-between text-2xl font-bold text-white border-t border-slate-700 pt-3">
                   <span>Total:</span>
                   <span>₹{total.toFixed(2)}</span>
