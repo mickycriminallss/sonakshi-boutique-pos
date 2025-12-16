@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { BarcodeScannerInput } from '@/components/BarcodeScannerInput';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -462,7 +462,7 @@ export default function SalesPage() {
     }, 250);
   };
 
-  const { subtotal, totalDiscount, tax, total } = calculateTotals();
+  const { subtotal, totalDiscount, percentageDiscount, tax, total } = calculateTotals();
 
   const handleSaveSettings = () => {
     localStorage.setItem('billPrintWidth', `${billWidth}mm`);
