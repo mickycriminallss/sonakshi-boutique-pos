@@ -43,15 +43,9 @@ import {
 import * as XLSX from 'xlsx';
 
 const CATEGORIES = [
-  'Sarees',
-  'Suits',
-  'Lehengas',
-  'Kurtis',
-  'Dress Materials',
-  'Blouses',
-  'Dupattas',
-  'Accessories',
-  'Jewellery',
+  'Top',
+  'Jeans',
+  'Dress',
   'Other',
 ];
 
