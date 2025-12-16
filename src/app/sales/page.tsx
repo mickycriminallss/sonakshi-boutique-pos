@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { BarcodeScannerInput } from '@/components/BarcodeScannerInput';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +28,7 @@ export default function SalesPage() {
   const [showCheckout, setShowCheckout] = useState(false);
   const [gstEnabled, setGstEnabled] = useState(true);
   const [gstRate, setGstRate] = useState(18);
+  const [discountPercent, setDiscountPercent] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
   const [billWidth, setBillWidth] = useState('80');
   const [labelWidth, setLabelWidth] = useState('38');
@@ -110,10 +111,12 @@ export default function SalesPage() {
 
   const calculateTotals = () => {
     const subtotal = saleItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const totalDiscount = saleItems.reduce((sum, item) => sum + item.discount, 0);
+    const itemDiscount = saleItems.reduce((sum, item) => sum + item.discount, 0);
+    const percentageDiscount = (subtotal - itemDiscount) * (discountPercent / 100);
+    const totalDiscount = itemDiscount + percentageDiscount;
     const tax = gstEnabled ? (subtotal - totalDiscount) * (gstRate / 100) : 0;
     const total = subtotal - totalDiscount + tax;
-    return { subtotal, totalDiscount, tax, total };
+    return { subtotal, totalDiscount, percentageDiscount, tax, total };
   };
 
   const handleCheckout = () => {
@@ -131,7 +134,7 @@ export default function SalesPage() {
     }
 
     try {
-      const { subtotal, totalDiscount, tax, total } = calculateTotals();
+      const { subtotal, totalDiscount, percentageDiscount, tax, total } = calculateTotals();
       const invoiceNumber = await getNextInvoiceNumber();
       
       const sale: Sale = {
@@ -159,11 +162,12 @@ export default function SalesPage() {
         // Reset form
         setSaleItems([]);
         setCustomerName('');
-        setCustomerPhone('');
-        setPaymentMethod('cash');
-        setGstEnabled(true);
-        setGstRate(18);
-        setShowCheckout(false);
+          setCustomerPhone('');
+          setPaymentMethod('cash');
+          setGstEnabled(true);
+          setGstRate(18);
+          setDiscountPercent(0);
+          setShowCheckout(false);
     } catch (error) {
       console.error('Error completing sale:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
@@ -178,7 +182,7 @@ export default function SalesPage() {
     const printWindow = window.open('', '', 'width=800,height=600');
     if (!printWindow) return;
 
-    const { subtotal, totalDiscount, tax, total } = calculateTotals();
+    const { subtotal, totalDiscount, percentageDiscount, tax, total } = calculateTotals();
     const invoice = invoiceNumber || await getNextInvoiceNumber();
     const now = new Date();
     
@@ -294,15 +298,16 @@ export default function SalesPage() {
           </style>
         </head>
         <body>
-          <div class="header">
-            <div class="business-name">SONAKSHI BOUTIQUE</div>
-            <div class="business-info">
-              Fashion & Lifestyle Store<br>
-              123 Main Street, City - 123456<br>
-              Tel: +91 98765 43210<br>
-              GSTIN: 29ABCDE1234F1Z5
+            <div class="header">
+              <div class="business-name">SONAKSHI BOUTIQUE</div>
+              <div style="font-size: 9px; font-style: italic; margin: 3px 0; color: #666;">De Manibus Nostris Ad Cor Tuum</div>
+              <div class="business-info">
+                Fashion & Lifestyle<br>
+                Owner: Sonali<br>
+                Tel: +91 74139 56875<br>
+                GSTIN: 29ABCDE1234F1Z5
+              </div>
             </div>
-          </div>
 
           <div class="invoice-info">
             <div>
@@ -338,17 +343,23 @@ export default function SalesPage() {
           </table>
 
           <div class="totals">
-            <div>
-              <span>Subtotal:</span>
-              <span>₹${subtotal.toFixed(2)}</span>
-            </div>
-              ${totalDiscount > 0 ? `
-                <div>
-                  <span>Discount:</span>
-                  <span>- ₹${totalDiscount.toFixed(2)}</span>
-                </div>
-              ` : ''}
-              ${tax > 0 ? `
+              <div>
+                <span>Subtotal:</span>
+                <span>₹${subtotal.toFixed(2)}</span>
+              </div>
+                ${percentageDiscount > 0 ? `
+                  <div>
+                    <span>Discount (${discountPercent}%):</span>
+                    <span>- ₹${percentageDiscount.toFixed(2)}</span>
+                  </div>
+                ` : ''}
+                ${totalDiscount > 0 && totalDiscount !== percentageDiscount ? `
+                  <div>
+                    <span>Total Discount:</span>
+                    <span>- ₹${totalDiscount.toFixed(2)}</span>
+                  </div>
+                ` : ''}
+                ${tax > 0 ? `
                 <div>
                   <span>GST (${gstRate}%):</span>
                   <span>₹${tax.toFixed(2)}</span>
@@ -619,50 +630,63 @@ export default function SalesPage() {
                 </CardContent>
               </Card>
 
-              <Card className="bg-slate-900/50 border-slate-700">
-                <CardContent className="pt-6">
-                  <div className="space-y-3">
-                    <div className="flex justify-between text-slate-400">
-                      <span>Subtotal:</span>
-                      <span>₹{subtotal.toFixed(2)}</span>
-                    </div>
-                      {totalDiscount > 0 && (
-                        <div className="flex justify-between text-slate-400">
-                          <span>Discount:</span>
-                          <span>- ₹{totalDiscount.toFixed(2)}</span>
-                        </div>
-                      )}
-                      <div className="flex items-center justify-between text-slate-400">
-                        <div className="flex items-center gap-2">
-                          <Checkbox
-                            id="gst-enabled"
-                            checked={gstEnabled}
-                            onCheckedChange={(checked) => setGstEnabled(checked as boolean)}
-                            className="border-slate-600"
-                          />
-                          <Label htmlFor="gst-enabled" className="text-slate-400 cursor-pointer">
-                            GST
-                          </Label>
-                          {gstEnabled && (
+                <Card className="bg-slate-900/50 border-slate-700">
+                  <CardContent className="pt-6">
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-slate-400">
+                        <span>Subtotal:</span>
+                        <span>₹{subtotal.toFixed(2)}</span>
+                      </div>
+                        <div className="flex items-center justify-between text-slate-400">
+                          <div className="flex items-center gap-2">
+                            <Label htmlFor="discount-percent" className="text-slate-400">
+                              Discount
+                            </Label>
                             <Input
+                              id="discount-percent"
                               type="number"
-                              value={gstRate}
-                              onChange={(e) => setGstRate(parseFloat(e.target.value) || 0)}
+                              value={discountPercent}
+                              onChange={(e) => setDiscountPercent(parseFloat(e.target.value) || 0)}
                               className="w-16 h-8 bg-slate-800 border-slate-600 text-white text-sm px-2"
                               min="0"
                               max="100"
                               step="0.1"
                             />
-                          )}
-                          {gstEnabled && <span className="text-slate-400">%</span>}
+                            <span className="text-slate-400">%</span>
+                          </div>
+                          <span>- ₹{percentageDiscount.toFixed(2)}</span>
                         </div>
-                        <span>₹{tax.toFixed(2)}</span>
+                        <div className="flex items-center justify-between text-slate-400">
+                          <div className="flex items-center gap-2">
+                            <Checkbox
+                              id="gst-enabled"
+                              checked={gstEnabled}
+                              onCheckedChange={(checked) => setGstEnabled(checked as boolean)}
+                              className="border-slate-600"
+                            />
+                            <Label htmlFor="gst-enabled" className="text-slate-400 cursor-pointer">
+                              GST
+                            </Label>
+                            {gstEnabled && (
+                              <Input
+                                type="number"
+                                value={gstRate}
+                                onChange={(e) => setGstRate(parseFloat(e.target.value) || 0)}
+                                className="w-16 h-8 bg-slate-800 border-slate-600 text-white text-sm px-2"
+                                min="0"
+                                max="100"
+                                step="0.1"
+                              />
+                            )}
+                            {gstEnabled && <span className="text-slate-400">%</span>}
+                          </div>
+                          <span>₹{tax.toFixed(2)}</span>
+                        </div>
+                      <div className="flex justify-between text-2xl font-bold text-white border-t border-slate-700 pt-3">
+                        <span>Total:</span>
+                        <span>₹{total.toFixed(2)}</span>
                       </div>
-                    <div className="flex justify-between text-2xl font-bold text-white border-t border-slate-700 pt-3">
-                      <span>Total:</span>
-                      <span>₹{total.toFixed(2)}</span>
                     </div>
-                  </div>
 
                   <Button
                     onClick={handleCheckout}
@@ -728,50 +752,63 @@ export default function SalesPage() {
             </CardContent>
           </Card>
 
-          <Card className="bg-slate-900/50 border-slate-700">
-            <CardContent className="pt-6">
-              <div className="space-y-3 mb-6">
-                <div className="flex justify-between text-slate-400">
-                  <span>Subtotal:</span>
-                  <span>₹{subtotal.toFixed(2)}</span>
-                </div>
-                  {totalDiscount > 0 && (
-                    <div className="flex justify-between text-slate-400">
-                      <span>Discount:</span>
-                      <span>- ₹{totalDiscount.toFixed(2)}</span>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between text-slate-400">
-                    <div className="flex items-center gap-2">
-                      <Checkbox
-                        id="checkout-gst-enabled"
-                        checked={gstEnabled}
-                        onCheckedChange={(checked) => setGstEnabled(checked as boolean)}
-                        className="border-slate-600"
-                      />
-                      <Label htmlFor="checkout-gst-enabled" className="text-slate-400 cursor-pointer">
-                        GST
-                      </Label>
-                      {gstEnabled && (
+            <Card className="bg-slate-900/50 border-slate-700">
+              <CardContent className="pt-6">
+                <div className="space-y-3 mb-6">
+                  <div className="flex justify-between text-slate-400">
+                    <span>Subtotal:</span>
+                    <span>₹{subtotal.toFixed(2)}</span>
+                  </div>
+                    <div className="flex items-center justify-between text-slate-400">
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="checkout-discount-percent" className="text-slate-400">
+                          Discount
+                        </Label>
                         <Input
+                          id="checkout-discount-percent"
                           type="number"
-                          value={gstRate}
-                          onChange={(e) => setGstRate(parseFloat(e.target.value) || 0)}
+                          value={discountPercent}
+                          onChange={(e) => setDiscountPercent(parseFloat(e.target.value) || 0)}
                           className="w-16 h-8 bg-slate-800 border-slate-600 text-white text-sm px-2"
                           min="0"
                           max="100"
                           step="0.1"
                         />
-                      )}
-                      {gstEnabled && <span className="text-slate-400">%</span>}
+                        <span className="text-slate-400">%</span>
+                      </div>
+                      <span>- ₹{percentageDiscount.toFixed(2)}</span>
                     </div>
-                    <span>₹{tax.toFixed(2)}</span>
+                    <div className="flex items-center justify-between text-slate-400">
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id="checkout-gst-enabled"
+                          checked={gstEnabled}
+                          onCheckedChange={(checked) => setGstEnabled(checked as boolean)}
+                          className="border-slate-600"
+                        />
+                        <Label htmlFor="checkout-gst-enabled" className="text-slate-400 cursor-pointer">
+                          GST
+                        </Label>
+                        {gstEnabled && (
+                          <Input
+                            type="number"
+                            value={gstRate}
+                            onChange={(e) => setGstRate(parseFloat(e.target.value) || 0)}
+                            className="w-16 h-8 bg-slate-800 border-slate-600 text-white text-sm px-2"
+                            min="0"
+                            max="100"
+                            step="0.1"
+                          />
+                        )}
+                        {gstEnabled && <span className="text-slate-400">%</span>}
+                      </div>
+                      <span>₹{tax.toFixed(2)}</span>
+                    </div>
+                  <div className="flex justify-between text-2xl font-bold text-white border-t border-slate-700 pt-3">
+                    <span>Total:</span>
+                    <span>₹{total.toFixed(2)}</span>
                   </div>
-                <div className="flex justify-between text-2xl font-bold text-white border-t border-slate-700 pt-3">
-                  <span>Total:</span>
-                  <span>₹{total.toFixed(2)}</span>
                 </div>
-              </div>
 
               <div className="flex gap-4">
                 <Button

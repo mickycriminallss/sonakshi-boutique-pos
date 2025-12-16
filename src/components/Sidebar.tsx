@@ -28,12 +28,13 @@ export function Sidebar() {
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border-r border-slate-800 flex flex-col z-50">
-      <div className="p-6 border-b border-slate-800">
-        <h1 className="text-xl font-bold bg-gradient-to-r from-amber-400 via-orange-400 to-rose-400 bg-clip-text text-transparent">
-          SONAKSHI
-        </h1>
-        <p className="text-xs text-slate-500 tracking-widest mt-0.5">BOUTIQUE POS</p>
-      </div>
+        <div className="p-6 border-b border-slate-800">
+          <h1 className="text-xl font-bold bg-gradient-to-r from-amber-400 via-orange-400 to-rose-400 bg-clip-text text-transparent">
+            SONAKSHI
+          </h1>
+          <p className="text-xs text-slate-500 tracking-widest mt-0.5">BOUTIQUE POS</p>
+          <p className="text-[10px] text-slate-600 italic mt-1" style={{ fontFamily: 'Georgia, serif' }}>De Manibus Nostris Ad Cor Tuum</p>
+        </div>
       
       <nav className="flex-1 p-4 space-y-1">
         {navItems.map((item) => {
@@ -56,12 +57,14 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="p-4 border-t border-slate-800">
-        <div className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 rounded-lg p-4 border border-amber-500/20">
-          <p className="text-xs text-slate-400">Business Hours</p>
-          <p className="text-sm text-white font-medium mt-1">10:00 AM - 9:00 PM</p>
+        <div className="p-4 border-t border-slate-800">
+          <div className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 rounded-lg p-4 border border-amber-500/20">
+            <p className="text-xs text-slate-400 font-semibold">Owner</p>
+            <p className="text-sm text-white font-medium mt-1">Sonali</p>
+            <p className="text-xs text-slate-400 mt-2">Contact</p>
+            <p className="text-sm text-amber-400 font-mono">+91 74139 56875</p>
+          </div>
         </div>
-      </div>
     </aside>
   );
 }
