@@ -134,53 +134,55 @@ export default function SalesPage() {
       setShowCheckout(true);
     };
 
-  const handleCompleteSale = async () => {
-    if (saleItems.length === 0) {
-      toast.error('Cart is empty');
-      return;
-    }
+    const [showInteractiveBill, setShowInteractiveBill] = useState(false);
+    const [completedSale, setCompletedSale] = useState<Sale | null>(null);
 
-    try {
-      const { subtotal, totalDiscount, percentageDiscount, tax, total } = calculateTotals();
-      const invoiceNumber = await getNextInvoiceNumber();
-      
-      const sale: Sale = {
-        id: crypto.randomUUID(),
-        invoiceNumber,
-        items: saleItems,
-        subtotal,
-        discount: totalDiscount,
-        tax,
-        total,
-        paymentMethod,
-        customerName: customerName || undefined,
-        customerPhone: customerPhone || undefined,
-        createdAt: new Date().toISOString(),
-      };
+    const handleCompleteSale = async () => {
+      if (saleItems.length === 0) {
+        toast.error('Cart is empty');
+        return;
+      }
 
-      await addSale(sale);
-      toast.success(`Sale completed! Invoice: ${sale.invoiceNumber}`);
-      
-      // Print bill
-      setTimeout(() => {
-        handlePrintBill(sale.invoiceNumber);
-      }, 500);
+      try {
+        const { subtotal, totalDiscount, percentageDiscount, tax, total } = calculateTotals();
+        const invoiceNumber = await getNextInvoiceNumber();
+        
+        const sale: Sale = {
+          id: crypto.randomUUID(),
+          invoiceNumber,
+          items: saleItems,
+          subtotal,
+          discount: totalDiscount,
+          tax,
+          total,
+          paymentMethod,
+          customerName: customerName || undefined,
+          customerPhone: customerPhone || undefined,
+          createdAt: new Date().toISOString(),
+        };
 
-        // Reset form
-        setSaleItems([]);
-        setCustomerName('');
-          setCustomerPhone('');
-          setPaymentMethod('cash');
-          setGstEnabled(true);
-          setGstRate(18);
-          setDiscountPercent(0);
-          setShowCheckout(false);
-    } catch (error) {
-      console.error('Error completing sale:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      toast.error(`Failed to complete sale: ${errorMessage}`);
-    }
-  };
+        await addSale(sale);
+        setCompletedSale(sale);
+        setShowCheckout(false);
+        setShowInteractiveBill(true);
+      } catch (error) {
+        console.error('Error completing sale:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        toast.error(`Failed to complete sale: ${errorMessage}`);
+      }
+    };
+
+    const handleNewSale = () => {
+      setSaleItems([]);
+      setCustomerName('');
+      setCustomerPhone('');
+      setPaymentMethod('cash');
+      setGstEnabled(true);
+      setGstRate(18);
+      setDiscountPercent(0);
+      setShowInteractiveBill(false);
+      setCompletedSale(null);
+    };
 
   const handlePrintBill = async (invoiceNumber?: string) => {
     const printContent = printRef.current;
@@ -479,74 +481,199 @@ export default function SalesPage() {
     toast.success('Print settings saved');
   };
 
-  return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-4xl font-bold text-white mb-2 font-serif">New Sale</h1>
-          <p className="text-slate-400">Scan items to add them to the cart</p>
-        </div>
-        <Dialog open={showSettings} onOpenChange={setShowSettings}>
-          <DialogTrigger asChild>
-            <Button variant="outline" className="border-slate-700 text-slate-300 hover:bg-slate-800">
-              <Settings className="mr-2 h-4 w-4" />
-              Print Settings
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="bg-slate-900 border-slate-700">
-            <DialogHeader>
-              <DialogTitle className="text-white">Printer Configuration</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-6 pt-4">
-              <div>
-                <Label htmlFor="billWidth" className="text-slate-300">Bill Width (mm)</Label>
-                <Input
-                  id="billWidth"
-                  type="number"
-                  value={billWidth}
-                  onChange={(e) => setBillWidth(e.target.value)}
-                  className="bg-slate-800 border-slate-600 text-white mt-2"
-                  placeholder="80"
-                />
-                <p className="text-xs text-slate-500 mt-1">Standard: 80mm, 58mm</p>
-              </div>
-              <div>
-                <Label className="text-slate-300">Barcode Label Size</Label>
-                <div className="grid grid-cols-2 gap-4 mt-2">
-                  <div>
-                    <Label htmlFor="labelWidth" className="text-slate-400 text-xs">Width (mm)</Label>
-                    <Input
-                      id="labelWidth"
-                      type="number"
-                      value={labelWidth}
-                      onChange={(e) => setLabelWidth(e.target.value)}
-                      className="bg-slate-800 border-slate-600 text-white mt-1"
-                      placeholder="38"
-                    />
+    if (showInteractiveBill && completedSale) {
+      return (
+        <div className="p-8 max-w-3xl mx-auto">
+          <div className="relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 via-emerald-500/10 to-purple-500/10 blur-3xl animate-pulse" />
+            
+            <Card className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-amber-500/30 shadow-2xl overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-amber-500/20 to-transparent rounded-full blur-3xl" />
+              <div className="absolute bottom-0 left-0 w-64 h-64 bg-gradient-to-tr from-emerald-500/20 to-transparent rounded-full blur-3xl" />
+              
+              <CardContent className="relative pt-12 pb-8 px-8">
+                <div className="text-center mb-8">
+                  <div className="inline-block animate-bounce mb-4">
+                    <div className="w-20 h-20 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-full flex items-center justify-center">
+                      <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
                   </div>
-                  <div>
-                    <Label htmlFor="labelHeight" className="text-slate-400 text-xs">Height (mm)</Label>
-                    <Input
-                      id="labelHeight"
-                      type="number"
-                      value={labelHeight}
-                      onChange={(e) => setLabelHeight(e.target.value)}
-                      className="bg-slate-800 border-slate-600 text-white mt-1"
-                      placeholder="25"
-                    />
+                  <h2 className="text-4xl font-bold text-white mb-2">Sale Complete!</h2>
+                  <p className="text-emerald-400 text-lg">Thank you for shopping with us</p>
+                </div>
+
+                <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 mb-6 border border-amber-500/20">
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="text-slate-400 text-sm">Invoice Number</span>
+                    <span className="text-2xl font-bold text-amber-400">{completedSale.invoiceNumber}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-400 text-sm">Date & Time</span>
+                    <span className="text-white">{new Date(completedSale.createdAt).toLocaleString('en-IN')}</span>
                   </div>
                 </div>
-                <p className="text-xs text-slate-500 mt-1">Your size: 38×25mm, Common: 50×30mm</p>
-              </div>
-              <Button onClick={handleSaveSettings} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">
-                Save Settings
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
 
-      {!showCheckout ? (
+                {(completedSale.customerName || completedSale.customerPhone) && (
+                  <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 mb-6 border border-purple-500/20">
+                    <h3 className="text-purple-400 font-semibold mb-3">Customer Details</h3>
+                    {completedSale.customerName && (
+                      <div className="flex justify-between mb-2">
+                        <span className="text-slate-400">Name</span>
+                        <span className="text-white">{completedSale.customerName}</span>
+                      </div>
+                    )}
+                    {completedSale.customerPhone && (
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Phone</span>
+                        <span className="text-white">{completedSale.customerPhone}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 mb-6 border border-blue-500/20">
+                  <h3 className="text-blue-400 font-semibold mb-4">Items Purchased</h3>
+                  <div className="space-y-3">
+                    {completedSale.items.map((item, idx) => (
+                      <div key={idx} className="flex justify-between items-center py-2 border-b border-slate-700/50 last:border-0">
+                        <div>
+                          <p className="text-white font-medium">{item.name}</p>
+                          <p className="text-slate-400 text-sm">Qty: {item.quantity} × ₹{item.price.toFixed(2)}</p>
+                        </div>
+                        <span className="text-white font-semibold">₹{item.total.toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-br from-emerald-500/20 to-teal-500/20 backdrop-blur-sm rounded-xl p-6 mb-6 border border-emerald-500/30">
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-slate-300">
+                      <span>Subtotal</span>
+                      <span>₹{completedSale.subtotal.toFixed(2)}</span>
+                    </div>
+                    {completedSale.discount > 0 && (
+                      <div className="flex justify-between text-slate-300">
+                        <span>Discount</span>
+                        <span className="text-rose-400">- ₹{completedSale.discount.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {completedSale.tax > 0 && (
+                      <div className="flex justify-between text-slate-300">
+                        <span>Tax (GST)</span>
+                        <span>₹{completedSale.tax.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-3xl font-bold text-white border-t-2 border-emerald-500/50 pt-3 mt-3">
+                      <span>Total Paid</span>
+                      <span className="text-emerald-400">₹{completedSale.total.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-center mb-6">
+                  <div className="bg-slate-800/50 backdrop-blur-sm rounded-full px-6 py-3 border border-slate-700">
+                    <span className="text-slate-400 mr-2">Payment:</span>
+                    <span className="text-white font-semibold uppercase">{completedSale.paymentMethod}</span>
+                  </div>
+                </div>
+
+                <div className="flex gap-4">
+                  <Button
+                    onClick={() => handlePrintBill(completedSale.invoiceNumber)}
+                    className="flex-1 h-14 text-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/20"
+                  >
+                    <Printer className="mr-2 h-5 w-5" />
+                    Print Bill
+                  </Button>
+                  <Button
+                    onClick={handleNewSale}
+                    className="flex-1 h-14 text-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-lg shadow-emerald-500/20"
+                  >
+                    New Sale
+                  </Button>
+                </div>
+
+                <div className="text-center mt-8 text-slate-400 text-sm italic">
+                  "From our hands to your heart"
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="p-8 max-w-7xl mx-auto">
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold text-white mb-2 font-serif">New Sale</h1>
+            <p className="text-slate-400">Scan items to add them to the cart</p>
+          </div>
+          <Dialog open={showSettings} onOpenChange={setShowSettings}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="border-slate-700 text-slate-300 hover:bg-slate-800">
+                <Settings className="mr-2 h-4 w-4" />
+                Print Settings
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="bg-slate-900 border-slate-700">
+              <DialogHeader>
+                <DialogTitle className="text-white">Printer Configuration</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-6 pt-4">
+                <div>
+                  <Label htmlFor="billWidth" className="text-slate-300">Bill Width (mm)</Label>
+                  <Input
+                    id="billWidth"
+                    type="number"
+                    value={billWidth}
+                    onChange={(e) => setBillWidth(e.target.value)}
+                    className="bg-slate-800 border-slate-600 text-white mt-2"
+                    placeholder="80"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">Standard: 80mm, 58mm</p>
+                </div>
+                <div>
+                  <Label className="text-slate-300">Barcode Label Size</Label>
+                  <div className="grid grid-cols-2 gap-4 mt-2">
+                    <div>
+                      <Label htmlFor="labelWidth" className="text-slate-400 text-xs">Width (mm)</Label>
+                      <Input
+                        id="labelWidth"
+                        type="number"
+                        value={labelWidth}
+                        onChange={(e) => setLabelWidth(e.target.value)}
+                        className="bg-slate-800 border-slate-600 text-white mt-1"
+                        placeholder="38"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="labelHeight" className="text-slate-400 text-xs">Height (mm)</Label>
+                      <Input
+                        id="labelHeight"
+                        type="number"
+                        value={labelHeight}
+                        onChange={(e) => setLabelHeight(e.target.value)}
+                        className="bg-slate-800 border-slate-600 text-white mt-1"
+                        placeholder="25"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">Your size: 38×25mm, Common: 50×30mm</p>
+                </div>
+                <Button onClick={handleSaveSettings} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">
+                  Save Settings
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {!showCheckout ? (
         <div className="space-y-6">
           <Card className="bg-slate-900/50 border-slate-700">
             <CardHeader>
