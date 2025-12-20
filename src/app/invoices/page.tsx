@@ -169,15 +169,17 @@ export default function InvoicesPage() {
           </style>
         </head>
         <body>
-          <div class="header">
-            <div class="business-name">SONAKSHI BOUTIQUE</div>
-            <div class="business-info">
-              Fashion & Lifestyle Store<br>
-              123 Main Street, City - 123456<br>
-              Tel: +91 98765 43210<br>
-              GSTIN: 29ABCDE1234F1Z5
+            <div class="header">
+              <div class="business-name">SONAKSHI BOUTIQUE</div>
+              <div class="business-info">
+                Owner: Sonakshi Sharma<br>
+                Fashion & Lifestyle Store<br>
+                123 Main Street, City - 123456<br>
+                Tel: +91 98765 43210<br>
+                Email: sonakshi.boutique@gmail.com<br>
+                GSTIN: 29ABCDE1234F1Z5
+              </div>
             </div>
-          </div>
 
           <div class="invoice-info">
             <div>
