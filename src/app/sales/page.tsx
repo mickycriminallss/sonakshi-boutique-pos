@@ -134,6 +134,12 @@ export default function SalesPage() {
       setShowCheckout(true);
     };
 
+    const handleBillSizeConfirm = () => {
+      localStorage.setItem('billPrintWidth', `${billWidth}mm`);
+      setShowBillSizeDialog(false);
+      setShowCheckout(true);
+    };
+
     const [showInteractiveBill, setShowInteractiveBill] = useState(false);
     const [completedSale, setCompletedSale] = useState<Sale | null>(null);
 
