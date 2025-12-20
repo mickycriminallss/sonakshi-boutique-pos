@@ -35,10 +35,28 @@ export default function DashboardPage() {
 
   const todaySales = sales.filter(s => new Date(s.createdAt) >= today);
   const todayTotal = todaySales.reduce((sum, s) => sum + s.total, 0);
+  
+  const todayProfit = todaySales.reduce((sum, sale) => {
+    const saleProfit = sale.items.reduce((itemSum, item) => {
+      const itemData = items.find(i => i.id === item.itemId);
+      if (!itemData) return itemSum;
+      return itemSum + ((item.price - itemData.purchasePrice) * item.quantity);
+    }, 0);
+    return sum + saleProfit;
+  }, 0);
 
   const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
   const monthlySales = sales.filter(s => new Date(s.createdAt) >= monthStart);
   const monthlyTotal = monthlySales.reduce((sum, s) => sum + s.total, 0);
+  
+  const monthlyProfit = monthlySales.reduce((sum, sale) => {
+    const saleProfit = sale.items.reduce((itemSum, item) => {
+      const itemData = items.find(i => i.id === item.itemId);
+      if (!itemData) return itemSum;
+      return itemSum + ((item.price - itemData.purchasePrice) * item.quantity);
+    }, 0);
+    return sum + saleProfit;
+  }, 0);
 
   const lowStockItems = items.filter(item => item.stock <= item.minStock);
 
@@ -93,6 +111,7 @@ export default function DashboardPage() {
           <CardContent>
             <div className="text-2xl font-bold text-white">{formatCurrency(todayTotal)}</div>
             <p className="text-xs text-slate-400 mt-1">{todaySales.length} transactions</p>
+            <p className="text-xs text-emerald-400 mt-1 font-semibold">Profit: {formatCurrency(todayProfit)}</p>
           </CardContent>
         </Card>
 
@@ -104,6 +123,7 @@ export default function DashboardPage() {
           <CardContent>
             <div className="text-2xl font-bold text-white">{formatCurrency(monthlyTotal)}</div>
             <p className="text-xs text-slate-400 mt-1">{monthlySales.length} transactions</p>
+            <p className="text-xs text-emerald-400 mt-1 font-semibold">Profit: {formatCurrency(monthlyProfit)}</p>
           </CardContent>
         </Card>
 
