@@ -33,6 +33,7 @@ export default function SalesPage() {
   const [billWidth, setBillWidth] = useState('80');
   const [labelWidth, setLabelWidth] = useState('38');
   const [labelHeight, setLabelHeight] = useState('25');
+  const [showBillSizeDialog, setShowBillSizeDialog] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
@@ -119,13 +120,19 @@ export default function SalesPage() {
     return { subtotal, totalDiscount, percentageDiscount, tax, total };
   };
 
-  const handleCheckout = () => {
-    if (saleItems.length === 0) {
-      toast.error('Cart is empty');
-      return;
-    }
-    setShowCheckout(true);
-  };
+    const handleCheckout = () => {
+      if (saleItems.length === 0) {
+        toast.error('Cart is empty');
+        return;
+      }
+      setShowBillSizeDialog(true);
+    };
+
+    const handleBillSizeConfirm = () => {
+      localStorage.setItem('billPrintWidth', `${billWidth}mm`);
+      setShowBillSizeDialog(false);
+      setShowCheckout(true);
+    };
 
   const handleCompleteSale = async () => {
     if (saleItems.length === 0) {
@@ -298,16 +305,16 @@ export default function SalesPage() {
           </style>
         </head>
         <body>
-            <div class="header">
-              <div class="business-name">SONAKSHI BOUTIQUE</div>
-              <div style="font-size: 9px; font-style: italic; margin: 3px 0; color: #666;">De Manibus Nostris Ad Cor Tuum</div>
-              <div class="business-info">
-                Fashion & Lifestyle<br>
-                Owner: Sonali<br>
-                Tel: +91 74139 56875<br>
-                GSTIN: 29ABCDE1234F1Z5
+              <div class="header">
+                <div class="business-name">SONAKSHI BOUTIQUE</div>
+                <div style="font-size: 10px; font-style: italic; margin: 4px 0; color: #555;">From our hands to your heart</div>
+                <div class="business-info">
+                  Fashion & Lifestyle<br>
+                  Owner: Sonali<br>
+                  Tel: +91 7413956875<br>
+                  GSTIN: 29ABCDE1234F1Z5
+                </div>
               </div>
-            </div>
 
           <div class="invoice-info">
             <div>
@@ -829,9 +836,38 @@ export default function SalesPage() {
             </CardContent>
           </Card>
         </div>
-      )}
+        )}
 
-      <div ref={printRef} style={{ display: 'none' }} />
-    </div>
-  );
-}
+        <div ref={printRef} style={{ display: 'none' }} />
+
+        {/* Bill Size Configuration Dialog */}
+        <Dialog open={showBillSizeDialog} onOpenChange={setShowBillSizeDialog}>
+          <DialogContent className="bg-slate-900 border-slate-700 text-white">
+            <DialogHeader>
+              <DialogTitle>Configure Bill Size</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="bill-width" className="text-slate-300">Bill Width (mm)</Label>
+                <Input
+                  id="bill-width"
+                  type="number"
+                  value={billWidth}
+                  onChange={(e) => setBillWidth(e.target.value)}
+                  className="bg-slate-800 border-slate-600 text-white"
+                  placeholder="80"
+                />
+                <p className="text-xs text-slate-400">Common sizes: 58mm, 80mm, 110mm</p>
+              </div>
+              <Button
+                onClick={handleBillSizeConfirm}
+                className="w-full bg-emerald-600 hover:bg-emerald-700"
+              >
+                Continue to Checkout
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
