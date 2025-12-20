@@ -54,12 +54,15 @@ export default function InvoicesPage() {
   }, [searchTerm, sales]);
 
   const handlePrintInvoice = (sale: Sale) => {
-    const printWindow = window.open('', '', 'width=800,height=600');
-    if (!printWindow) return;
-    
     const billWidth = localStorage.getItem('billPrintWidth') || '80mm';
 
-    printWindow.document.write(`
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast.error('Please allow pop-ups to print the bill');
+      return;
+    }
+
+    const html = `
       <!DOCTYPE html>
       <html>
         <head>
@@ -69,108 +72,81 @@ export default function InvoicesPage() {
               size: ${billWidth} auto;
               margin: 0;
             }
-            * {
-              margin: 0;
-              padding: 0;
-              box-sizing: border-box;
-            }
             body {
-              font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-              font-size: 12px;
-              line-height: 1.4;
-              padding: 10mm;
+              font-family: 'Courier New', Courier, monospace;
+              font-size: 13px;
+              line-height: 1.2;
+              padding: 5mm;
               width: ${billWidth};
               background: white;
               color: black;
+              margin: 0 auto;
             }
             .header {
               text-align: center;
-              margin-bottom: 20px;
-              border-bottom: 1px solid #eee;
-              padding-bottom: 15px;
+              margin-bottom: 15px;
             }
             .org-name {
-              font-size: 24px;
-              font-weight: 800;
-              text-transform: uppercase;
-              letter-spacing: 2px;
-              margin-bottom: 4px;
-              color: #000;
+              font-size: 18px;
+              font-weight: bold;
+              margin-bottom: 2px;
             }
             .tagline {
               font-size: 11px;
-              font-style: italic;
-              color: #666;
-              margin-bottom: 12px;
+              margin-bottom: 5px;
             }
             .owner-details {
-              font-size: 10px;
-              color: #444;
+              font-size: 11px;
+              margin-bottom: 10px;
             }
-            .invoice-meta {
+            .divider {
+              border-top: 1px dashed #000;
+              margin: 10px 0;
+            }
+            .meta {
               display: flex;
               justify-content: space-between;
-              margin-bottom: 20px;
               font-size: 11px;
-              border-bottom: 1px solid #eee;
-              padding-bottom: 10px;
+              margin-bottom: 10px;
             }
-            .customer-section {
-              margin-bottom: 20px;
-              font-size: 11px;
-            }
-            .items-table {
+            .table {
               width: 100%;
               border-collapse: collapse;
-              margin-bottom: 20px;
             }
-            .items-table th {
+            .table th {
               text-align: left;
-              font-size: 10px;
-              text-transform: uppercase;
-              color: #888;
-              border-bottom: 2px solid #000;
-              padding: 8px 0;
+              border-bottom: 1px dashed #000;
+              padding: 5px 0;
+              font-size: 12px;
             }
-            .items-table td {
-              padding: 10px 0;
-              border-bottom: 1px solid #eee;
-              font-size: 11px;
+            .table td {
+              padding: 5px 0;
+              font-size: 12px;
             }
             .text-right { text-align: right; }
-            .totals-section {
-              margin-left: auto;
-              width: 100%;
-              max-width: 200px;
+            .totals {
+              margin-top: 10px;
             }
             .total-row {
               display: flex;
               justify-content: space-between;
-              padding: 4px 0;
-              font-size: 11px;
+              padding: 2px 0;
             }
             .grand-total {
               font-size: 16px;
               font-weight: bold;
-              border-top: 2px solid #000;
-              margin-top: 8px;
-              padding-top: 8px;
+              border-top: 1px dashed #000;
+              margin-top: 5px;
+              padding-top: 5px;
             }
             .footer {
               text-align: center;
-              margin-top: 40px;
-              font-size: 10px;
-              color: #888;
+              margin-top: 20px;
+              font-size: 11px;
             }
             .thank-you {
-              font-size: 14px;
-              font-weight: 600;
-              color: #000;
+              font-weight: bold;
               margin-bottom: 5px;
-            }
-            @media print {
-              body { padding: 5mm; }
-              .no-print { display: none; }
             }
           </style>
         </head>
@@ -179,33 +155,27 @@ export default function InvoicesPage() {
             <div class="org-name">SONAKSHI BOUTIQUE</div>
             <div class="tagline">From our hands to your heart</div>
             <div class="owner-details">
-              Owner: Sonali | Tel: +91 7413956875<br>
-              GSTIN: 29ABCDE1234F1Z5
+              Owner: Sonali | Tel: +91 7413956875
             </div>
           </div>
 
-          <div class="invoice-meta">
-            <div>
-              <strong>Invoice #:</strong> ${sale.invoiceNumber}<br>
-              <strong>Date:</strong> ${new Date(sale.createdAt).toLocaleDateString('en-IN')}
-            </div>
-            <div class="text-right">
-              <strong>Time:</strong> ${new Date(sale.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-            </div>
+          <div class="divider"></div>
+
+          <div class="meta">
+            <span>Bill No: ${sale.invoiceNumber}</span>
+            <span>Date: ${new Date(sale.createdAt).toLocaleDateString('en-IN')}</span>
+          </div>
+          <div class="meta">
+            <span>Customer: ${sale.customerName || 'Cash Sale'}</span>
+            <span>Time: ${new Date(sale.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
           </div>
 
-          ${(sale.customerName || sale.customerPhone) ? `
-            <div class="customer-section">
-              <strong>Billed To:</strong><br>
-              ${sale.customerName || 'Valued Customer'}<br>
-              ${sale.customerPhone || ''}
-            </div>
-          ` : ''}
+          <div class="divider"></div>
 
-          <table class="items-table">
+          <table class="table">
             <thead>
               <tr>
-                <th>Item Description</th>
+                <th>Item</th>
                 <th class="text-right">Qty</th>
                 <th class="text-right">Price</th>
                 <th class="text-right">Total</th>
@@ -216,60 +186,58 @@ export default function InvoicesPage() {
                 <tr>
                   <td>${item.name}</td>
                   <td class="text-right">${item.quantity}</td>
-                  <td class="text-right">₹${item.price.toFixed(2)}</td>
-                  <td class="text-right">₹${(item.price * item.quantity).toFixed(2)}</td>
+                  <td class="text-right">${item.price.toFixed(0)}</td>
+                  <td class="text-right">${(item.price * item.quantity).toFixed(0)}</td>
                 </tr>
               `).join('')}
             </tbody>
           </table>
 
-          <div class="totals-section">
+          <div class="divider"></div>
+
+          <div class="totals">
             <div class="total-row">
-              <span>Subtotal</span>
+              <span>Subtotal:</span>
               <span>₹${sale.subtotal.toFixed(2)}</span>
             </div>
             ${sale.discount > 0 ? `
               <div class="total-row">
-                <span>Discount</span>
+                <span>Discount:</span>
                 <span>- ₹${sale.discount.toFixed(2)}</span>
               </div>
             ` : ''}
             ${sale.tax > 0 ? `
               <div class="total-row">
-                <span>GST (18%)</span>
+                <span>GST:</span>
                 <span>₹${sale.tax.toFixed(2)}</span>
               </div>
             ` : ''}
             <div class="total-row grand-total">
-              <span>TOTAL</span>
+              <span>NET AMOUNT:</span>
               <span>₹${sale.total.toFixed(2)}</span>
             </div>
           </div>
 
+          <div class="divider"></div>
+
           <div class="footer">
-            <div class="thank-you">Thank You!</div>
-            <div>We appreciate your business. Visit us again soon!</div>
-            <div style="margin-top: 15px; font-size: 8px; letter-spacing: 1px; color: #ccc;">*** DUPLICATE INVOICE ***</div>
+            <div class="thank-you">Thank You for Shopping!</div>
+            <div>Visit us again at SONAKSHI BOUTIQUE</div>
+            <div style="margin-top: 10px; font-size: 9px; color: #666;">*** DUPLICATE INVOICE ***</div>
           </div>
+
+          <script>
+            window.onload = () => {
+              window.print();
+              setTimeout(() => { window.close(); }, 500);
+            };
+          </script>
         </body>
       </html>
-    `);
+    `;
 
+    printWindow.document.write(html);
     printWindow.document.close();
-    
-    printWindow.onload = () => {
-      printWindow.focus();
-      printWindow.print();
-    };
-
-    setTimeout(() => {
-      if (printWindow) {
-        printWindow.focus();
-        printWindow.print();
-      }
-    }, 1000);
-
-    toast.success('Printing invoice...');
   };
 
   const handleViewDetails = (sale: Sale) => {
