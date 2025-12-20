@@ -134,6 +134,12 @@ export default function SalesPage() {
       setShowCheckout(true);
     };
 
+    const handleBillSizeConfirm = () => {
+      localStorage.setItem('billPrintWidth', `${billWidth}mm`);
+      setShowBillSizeDialog(false);
+      setShowCheckout(true);
+    };
+
     const [showInteractiveBill, setShowInteractiveBill] = useState(false);
     const [completedSale, setCompletedSale] = useState<Sale | null>(null);
 
@@ -286,12 +292,27 @@ export default function SalesPage() {
           </style>
         </head>
         <body>
-          <div class="header">
-            <div class="org-name">SONAKSHI BOUTIQUE</div>
-            <div class="tagline">From our hands to your heart</div>
-            <div class="owner-details">
-              Owner: Sonali | Tel: +91 7413956875
+              <div class="header">
+                <div class="business-name">SONAKSHI BOUTIQUE</div>
+                <div style="font-size: 10px; font-style: italic; margin: 4px 0; color: #555;">From our hands to your heart</div>
+                <div class="business-info">
+                  Fashion & Lifestyle<br>
+                  Owner: Sonali<br>
+                  Tel: +91 7413956875<br>
+                  GSTIN: 29ABCDE1234F1Z5
+                </div>
+              </div>
+
+          <div class="invoice-info">
+            <div>
+              <span><strong>Invoice:</strong> ${invoice}</span>
+              <span>${now.toLocaleDateString('en-IN')}</span>
             </div>
+            <div>
+              <span>${now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
+            </div>
+            ${customerName ? `<div><strong>Customer:</strong> ${customerName}</div>` : ''}
+            ${customerPhone ? `<div><strong>Phone:</strong> ${customerPhone}</div>` : ''}
           </div>
 
           <div class="divider"></div>
