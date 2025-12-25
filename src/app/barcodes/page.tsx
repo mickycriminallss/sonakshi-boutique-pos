@@ -79,22 +79,25 @@ export default function BarcodesPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState<ItemFormData>(initialFormData);
   const [showSettings, setShowSettings] = useState(false);
-  const [labelWidth, setLabelWidth] = useState('38');
-  const [labelHeight, setLabelHeight] = useState('25');
+    const [labelWidth, setLabelWidth] = useState('80');
+    const [labelHeight, setLabelHeight] = useState('25');
+    const [singleLabelWidth, setSingleLabelWidth] = useState('38');
   const printRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    async function loadItems() {
-      const itemsData = await getItems();
-      setItems(itemsData);
-    }
-    loadItems();
-    
-    const savedLabelWidth = localStorage.getItem('labelWidth');
-    const savedLabelHeight = localStorage.getItem('labelHeight');
-    if (savedLabelWidth) setLabelWidth(savedLabelWidth.replace('mm', ''));
-    if (savedLabelHeight) setLabelHeight(savedLabelHeight.replace('mm', ''));
-  }, []);
+    useEffect(() => {
+      async function loadItems() {
+        const itemsData = await getItems();
+        setItems(itemsData);
+      }
+      loadItems();
+      
+      const savedLabelWidth = localStorage.getItem('labelWidth');
+      const savedLabelHeight = localStorage.getItem('labelHeight');
+      const savedSingleWidth = localStorage.getItem('singleLabelWidth');
+      if (savedLabelWidth) setLabelWidth(savedLabelWidth.replace('mm', ''));
+      if (savedLabelHeight) setLabelHeight(savedLabelHeight.replace('mm', ''));
+      if (savedSingleWidth) setSingleLabelWidth(savedSingleWidth.replace('mm', ''));
+    }, []);
 
   const filteredItems = items.filter(item =>
     item.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -122,114 +125,143 @@ export default function BarcodesPage() {
     }
   };
 
-  const handlePrintSelected = () => {
-    if (selectedItems.size === 0) {
-      toast.error('Please select items to print');
-      return;
-    }
+    const handlePrintSelected = () => {
+      if (selectedItems.size === 0) {
+        toast.error('Please select items to print');
+        return;
+      }
 
-    const printWindow = window.open('', '', 'width=800,height=600');
-    if (!printWindow) {
-      toast.error('Please allow pop-ups to print');
-      return;
-    }
+      const printWindow = window.open('', '', 'width=800,height=600');
+      if (!printWindow) {
+        toast.error('Please allow pop-ups to print');
+        return;
+      }
 
-    const selectedItemsList = items.filter(item => selectedItems.has(item.id));
-    const savedLabelWidth = localStorage.getItem('labelWidth') || '57mm';
-    const savedLabelHeight = localStorage.getItem('labelHeight') || '32mm';
-    
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Barcode Labels</title>
-          <style>
-            @page {
-              size: ${savedLabelWidth} ${savedLabelHeight};
-              margin: 0;
-            }
-            body {
-              margin: 0;
-              padding: 0;
-              font-family: Arial, sans-serif;
-            }
-            .label {
-              width: ${savedLabelWidth};
-              height: ${savedLabelHeight};
-              padding: 2mm;
-              box-sizing: border-box;
-              page-break-after: always;
-              display: flex;
-              flex-direction: column;
-              justify-content: center;
-              align-items: center;
-              text-align: center;
-            }
-            .label:last-child {
-              page-break-after: auto;
-            }
-            .item-name {
-              font-size: 9pt;
-              font-weight: bold;
-              margin-bottom: 2px;
-              max-width: 100%;
-              overflow: hidden;
-              text-overflow: ellipsis;
-              white-space: nowrap;
-            }
-            .item-price {
-              font-size: 11pt;
-              font-weight: bold;
-              margin-bottom: 3px;
-            }
-            .barcode-container {
-              margin: 2px 0;
-            }
-            .barcode-container svg {
-              max-width: 100%;
-              height: auto;
-            }
-          </style>
-        </head>
-        <body>
-    `);
+      const selectedItemsList = items.filter(item => selectedItems.has(item.id));
+      
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Barcode Labels</title>
+            <style>
+              @page {
+                size: ${labelWidth}mm ${labelHeight}mm;
+                margin: 0;
+              }
+              body {
+                margin: 0;
+                padding: 0;
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+              }
+              .label-row {
+                display: flex;
+                justify-content: space-between;
+                width: ${labelWidth}mm;
+                height: ${labelHeight}mm;
+                page-break-after: always;
+                box-sizing: border-box;
+                padding: 0 1mm;
+              }
+              .label {
+                width: ${singleLabelWidth}mm;
+                height: ${labelHeight}mm;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                text-align: center;
+                overflow: hidden;
+                box-sizing: border-box;
+                padding: 1mm;
+              }
+              .item-name {
+                font-size: 8pt;
+                font-weight: 700;
+                margin-bottom: 1px;
+                max-width: 100%;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                text-transform: uppercase;
+              }
+              .item-price {
+                font-size: 10pt;
+                font-weight: 800;
+                margin-bottom: 2px;
+              }
+              .barcode-container {
+                width: 100%;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+              }
+              .barcode-container img {
+                max-width: 100%;
+                height: auto;
+                max-height: 12mm;
+              }
+              @media print {
+                body { -webkit-print-color-adjust: exact; }
+                .label-row { page-break-after: always; }
+              }
+            </style>
+          </head>
+          <body>
+      `);
 
-    selectedItemsList.forEach(item => {
-      const canvas = document.createElement('canvas');
       const JsBarcode = require('jsbarcode');
-      JsBarcode(canvas, item.barcode, {
-        format: 'CODE128',
-        width: 1.5,
-        height: 35,
-        displayValue: true,
-        fontSize: 10,
-        margin: 2,
+
+      selectedItemsList.forEach(item => {
+        // Create barcode once per item
+        const canvas = document.createElement('canvas');
+        JsBarcode(canvas, item.barcode, {
+          format: 'CODE128',
+          width: 1.2,
+          height: 30,
+          displayValue: true,
+          fontSize: 10,
+          margin: 0,
+        });
+        const barcodeData = canvas.toDataURL();
+
+        // Print two side by side for each item
+        printWindow.document.write(`
+          <div class="label-row">
+            <div class="label">
+              <div class="item-name">${item.name}</div>
+              <div class="item-price">₹${item.sellingPrice.toFixed(2)}</div>
+              <div class="barcode-container">
+                <img src="${barcodeData}" />
+              </div>
+            </div>
+            <div class="label">
+              <div class="item-name">${item.name}</div>
+              <div class="item-price">₹${item.sellingPrice.toFixed(2)}</div>
+              <div class="barcode-container">
+                <img src="${barcodeData}" />
+              </div>
+            </div>
+          </div>
+        `);
       });
 
       printWindow.document.write(`
-        <div class="label">
-          <div class="item-name">${item.name}</div>
-          <div class="item-price">₹${item.sellingPrice.toFixed(2)}</div>
-          <div class="barcode-container">
-            <img src="${canvas.toDataURL()}" style="max-width: 100%; height: auto;" />
-          </div>
-        </div>
+          </body>
+        </html>
       `);
-    });
+      printWindow.document.close();
 
-    printWindow.document.write(`
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
+      // Important: Wait for images to load before printing
+      printWindow.onload = () => {
+        setTimeout(() => {
+          printWindow.print();
+          printWindow.close();
+        }, 500);
+      };
 
-    setTimeout(() => {
-      printWindow.print();
-      printWindow.close();
-    }, 250);
-
-    toast.success(`Printing ${selectedItems.size} barcode labels`);
-  };
+      toast.success(`Printing barcodes for ${selectedItems.size} items (2-up)`);
+    };
 
   const handleGenerateBarcode = () => {
     const barcode = generateBarcode();
@@ -289,6 +321,7 @@ export default function BarcodesPage() {
     const handleSaveSettings = () => {
       localStorage.setItem('labelWidth', `${labelWidth}mm`);
       localStorage.setItem('labelHeight', `${labelHeight}mm`);
+      localStorage.setItem('singleLabelWidth', `${singleLabelWidth}mm`);
       setShowSettings(false);
       toast.success('Label print settings saved');
     };
@@ -313,34 +346,47 @@ export default function BarcodesPage() {
                   <DialogTitle className="text-white">Barcode Label Configuration</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 pt-4">
-                  <div>
-                    <Label className="text-slate-300">Label Size</Label>
-                    <div className="grid grid-cols-2 gap-4 mt-2">
-                      <div>
-                        <Label htmlFor="barcodeWidth" className="text-slate-400 text-xs">Width (mm)</Label>
-                        <Input
-                          id="barcodeWidth"
-                          type="number"
-                          value={labelWidth}
-                          onChange={(e) => setLabelWidth(e.target.value)}
-                          className="bg-slate-800 border-slate-600 text-white mt-1"
-                          placeholder="38"
-                        />
+                    <div>
+                      <Label className="text-slate-300">Label Configuration (2-up)</Label>
+                      <div className="grid grid-cols-1 gap-4 mt-2">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="singleWidth" className="text-slate-400 text-xs">Label Width (mm)</Label>
+                            <Input
+                              id="singleWidth"
+                              type="number"
+                              value={singleLabelWidth}
+                              onChange={(e) => setSingleLabelWidth(e.target.value)}
+                              className="bg-slate-800 border-slate-600 text-white mt-1"
+                              placeholder="38"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="barcodeHeight" className="text-slate-400 text-xs">Label Height (mm)</Label>
+                            <Input
+                              id="barcodeHeight"
+                              type="number"
+                              value={labelHeight}
+                              onChange={(e) => setLabelHeight(e.target.value)}
+                              className="bg-slate-800 border-slate-600 text-white mt-1"
+                              placeholder="25"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <Label htmlFor="barcodeWidth" className="text-slate-400 text-xs">Total Row Width (mm) - incl. gap</Label>
+                          <Input
+                            id="barcodeWidth"
+                            type="number"
+                            value={labelWidth}
+                            onChange={(e) => setLabelWidth(e.target.value)}
+                            className="bg-slate-800 border-slate-600 text-white mt-1"
+                            placeholder="80"
+                          />
+                        </div>
                       </div>
-                      <div>
-                        <Label htmlFor="barcodeHeight" className="text-slate-400 text-xs">Height (mm)</Label>
-                        <Input
-                          id="barcodeHeight"
-                          type="number"
-                          value={labelHeight}
-                          onChange={(e) => setLabelHeight(e.target.value)}
-                          className="bg-slate-800 border-slate-600 text-white mt-1"
-                          placeholder="25"
-                        />
-                      </div>
+                      <p className="text-xs text-slate-500 mt-2">For TSC TE244 (2-up): Set single label to 38mm and row width to ~80mm.</p>
                     </div>
-                    <p className="text-xs text-slate-500 mt-2">Your size: 38×25mm, Common: 50×30mm, 57×32mm</p>
-                  </div>
                   <Button onClick={handleSaveSettings} className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-slate-900">
                     Save Settings
                   </Button>
