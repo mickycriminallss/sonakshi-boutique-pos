@@ -23,6 +23,7 @@ import { getItems, addItem, generateBarcode, generateSKU } from '@/lib/store';
 import { Item } from '@/lib/types';
 import { BarcodeGenerator } from '@/components/BarcodeGenerator';
 import { toast } from 'sonner';
+import JsBarcode from 'jsbarcode';
 import {
   Plus,
   Search,
@@ -210,8 +211,6 @@ export default function BarcodesPage() {
           <body>
       `);
 
-      const JsBarcode = require('jsbarcode');
-
       selectedItemsList.forEach(item => {
         // Create barcode once per item
         const canvas = document.createElement('canvas');
@@ -252,13 +251,35 @@ export default function BarcodesPage() {
       `);
       printWindow.document.close();
 
-      // Important: Wait for images to load before printing
-      printWindow.onload = () => {
+      // More robust printing trigger
+      const images = printWindow.document.getElementsByTagName('img');
+      let loadedCount = 0;
+      
+      const triggerPrint = () => {
+        printWindow.focus();
+        printWindow.print();
+        // Delay closing to allow print dialog to handle the task
         setTimeout(() => {
-          printWindow.print();
           printWindow.close();
-        }, 500);
+        }, 1000);
       };
+
+      if (images.length === 0) {
+        triggerPrint();
+      } else {
+        Array.from(images).forEach(img => {
+          if (img.complete) {
+            loadedCount++;
+            if (loadedCount === images.length) triggerPrint();
+          } else {
+            img.onload = () => {
+              loadedCount++;
+              if (loadedCount === images.length) triggerPrint();
+            };
+            img.onerror = triggerPrint; // Fallback
+          }
+        });
+      }
 
       toast.success(`Printing barcodes for ${selectedItems.size} items (2-up)`);
     };
