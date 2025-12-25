@@ -211,39 +211,44 @@ export default function BarcodesPage() {
           <body>
       `);
 
-      selectedItemsList.forEach(item => {
-        // Create barcode once per item
-        const canvas = document.createElement('canvas');
-        JsBarcode(canvas, item.barcode, {
-          format: 'CODE128',
-          width: 1.2,
-          height: 30,
-          displayValue: true,
-          fontSize: 10,
-          margin: 0,
-        });
-        const barcodeData = canvas.toDataURL();
+        selectedItemsList.forEach(item => {
+          try {
+            // Create barcode once per item
+            const canvas = document.createElement('canvas');
+            JsBarcode(canvas, item.barcode, {
+              format: 'CODE128',
+              width: 1.2,
+              height: 30,
+              displayValue: true,
+              fontSize: 10,
+              margin: 0,
+            });
+            const barcodeData = canvas.toDataURL();
 
-        // Print two side by side for each item
-        printWindow.document.write(`
-          <div class="label-row">
-            <div class="label">
-              <div class="item-name">${item.name}</div>
-              <div class="item-price">₹${item.sellingPrice.toFixed(2)}</div>
-              <div class="barcode-container">
-                <img src="${barcodeData}" />
+            // Print two side by side for each item
+            printWindow.document.write(`
+              <div class="label-row">
+                <div class="label">
+                  <div class="item-name">${item.name}</div>
+                  <div class="item-price">₹${item.sellingPrice.toFixed(2)}</div>
+                  <div class="barcode-container">
+                    <img src="${barcodeData}" />
+                  </div>
+                </div>
+                <div class="label">
+                  <div class="item-name">${item.name}</div>
+                  <div class="item-price">₹${item.sellingPrice.toFixed(2)}</div>
+                  <div class="barcode-container">
+                    <img src="${barcodeData}" />
+                  </div>
+                </div>
               </div>
-            </div>
-            <div class="label">
-              <div class="item-name">${item.name}</div>
-              <div class="item-price">₹${item.sellingPrice.toFixed(2)}</div>
-              <div class="barcode-container">
-                <img src="${barcodeData}" />
-              </div>
-            </div>
-          </div>
-        `);
-      });
+            `);
+          } catch (error) {
+            console.error(`Barcode generation failed for item ${item.name}:`, error);
+            toast.error(`Invalid barcode for ${item.name}`);
+          }
+        });
 
       printWindow.document.write(`
           </body>
