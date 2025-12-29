@@ -68,122 +68,141 @@ export default function InvoicesPage() {
       <html>
         <head>
           <title>Invoice ${sale.invoiceNumber}</title>
-          <style>
-            @page {
-              size: ${billWidth} ${billHeight};
-              margin: 0;
-            }
-            * {
-              box-sizing: border-box;
-              -webkit-print-color-adjust: exact;
-            }
-            body {
-              font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-              font-size: ${parseInt(billWidth) > 100 ? '14px' : '12px'};
-              line-height: 1.5;
-              padding: ${parseInt(billWidth) > 100 ? '10mm' : '4mm'};
-              width: ${billWidth};
-              min-height: ${billHeight === 'auto' ? 'auto' : billHeight};
-              background: white;
-              color: black;
-              margin: 0 auto;
-            }
-            .header {
-              text-align: center;
-              margin-bottom: 20px;
-              border-bottom: 2px solid #000;
-              padding-bottom: 10px;
-            }
-            .business-name {
-              font-size: ${parseInt(billWidth) > 100 ? '28px' : '20px'};
-              font-weight: 800;
-              margin-bottom: 4px;
-              letter-spacing: 1px;
-              text-transform: uppercase;
-            }
-            .business-info {
-              font-size: ${parseInt(billWidth) > 100 ? '12px' : '10px'};
-              color: #333;
-              line-height: 1.4;
-            }
-            .invoice-title {
-              text-align: center;
-              font-size: 16px;
-              font-weight: bold;
-              margin: 10px 0;
-              text-decoration: underline;
-              text-transform: uppercase;
-            }
-            .meta-container {
-              display: flex;
-              justify-content: space-between;
-              margin-bottom: 15px;
-              font-size: ${parseInt(billWidth) > 100 ? '13px' : '11px'};
-            }
-            .meta-column {
-              flex: 1;
-            }
-            .meta-column:last-child {
-              text-align: right;
-            }
-            .table {
-              width: 100%;
-              border-collapse: collapse;
-              margin: 15px 0;
-            }
-            .table th {
-              text-align: left;
-              border-top: 1px solid #000;
-              border-bottom: 1px solid #000;
-              padding: 8px 4px;
-              font-weight: bold;
-              background: #f9f9f9;
-            }
-            .table td {
-              padding: 8px 4px;
-              border-bottom: 1px solid #eee;
-            }
-            .text-right { text-align: right; }
-            .totals-container {
-              margin-top: 20px;
-              width: 100%;
-              display: flex;
-              justify-content: flex-end;
-            }
-            .totals-table {
-              width: ${parseInt(billWidth) > 100 ? '50%' : '100%'};
-            }
-            .total-row {
-              display: flex;
-              justify-content: space-between;
-              padding: 4px 0;
-            }
-            .grand-total {
-              font-size: ${parseInt(billWidth) > 100 ? '20px' : '16px'};
-              font-weight: bold;
-              border-top: 2px solid #000;
-              border-bottom: 2px solid #000;
-              margin-top: 8px;
-              padding: 8px 0;
-            }
-            .footer {
-              text-align: center;
-              margin-top: 30px;
-              padding-top: 10px;
-              border-top: 1px solid #eee;
-              font-size: 11px;
-              color: #666;
-            }
-            .thank-you {
-              font-weight: bold;
-              font-size: 14px;
-              color: #000;
-              margin-bottom: 5px;
-            }
-            @media print {
-              body { margin: 0; padding: ${parseInt(billWidth) > 100 ? '10mm' : '4mm'}; }
-            }
-          </style>
+            <style>
+              @page {
+                size: ${billWidth} ${billHeight};
+                margin: 0;
+              }
+              * {
+                box-sizing: border-box;
+                -webkit-print-color-adjust: exact;
+              }
+              body {
+                font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                font-size: ${parseInt(billWidth) >= 140 ? '16px' : parseInt(billWidth) > 100 ? '14px' : '12px'};
+                line-height: 1.5;
+                padding: ${parseInt(billWidth) >= 140 ? '15mm' : parseInt(billWidth) > 100 ? '10mm' : '4mm'};
+                width: ${billWidth};
+                min-height: ${billHeight === 'auto' ? 'auto' : billHeight};
+                background: white;
+                color: black;
+                margin: 0 auto;
+              }
+              .header {
+                text-align: center;
+                margin-bottom: ${parseInt(billWidth) >= 140 ? '30px' : '20px'};
+                border-bottom: 2px solid #000;
+                padding-bottom: ${parseInt(billWidth) >= 140 ? '20px' : '10px'};
+              }
+              .business-name {
+                font-size: ${parseInt(billWidth) >= 140 ? '36px' : parseInt(billWidth) > 100 ? '28px' : '20px'};
+                font-weight: 800;
+                margin-bottom: 8px;
+                letter-spacing: 2px;
+                text-transform: uppercase;
+                color: #000;
+              }
+              .business-info {
+                font-size: ${parseInt(billWidth) >= 140 ? '14px' : parseInt(billWidth) > 100 ? '12px' : '10px'};
+                color: #333;
+                line-height: 1.6;
+              }
+              .invoice-title {
+                text-align: center;
+                font-size: ${parseInt(billWidth) >= 140 ? '20px' : '16px'};
+                font-weight: bold;
+                margin: 20px 0;
+                text-decoration: underline;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+              }
+              .meta-container {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 20px;
+                font-size: ${parseInt(billWidth) >= 140 ? '14px' : parseInt(billWidth) > 100 ? '13px' : '11px'};
+                background: ${parseInt(billWidth) >= 140 ? '#f8f8f8' : 'transparent'};
+                padding: ${parseInt(billWidth) >= 140 ? '10px' : '0'};
+                border-radius: 4px;
+              }
+              .meta-column {
+                flex: 1;
+              }
+              .meta-column:last-child {
+                text-align: right;
+              }
+              .table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 20px 0;
+              }
+              .table th {
+                text-align: left;
+                border-top: 2px solid #000;
+                border-bottom: 2px solid #000;
+                padding: ${parseInt(billWidth) >= 140 ? '12px 8px' : '8px 4px'};
+                font-weight: bold;
+                background: #eee;
+              }
+              .table td {
+                padding: ${parseInt(billWidth) >= 140 ? '12px 8px' : '8px 4px'};
+                border-bottom: 1px solid #eee;
+              }
+              .text-right { text-align: right; }
+              .totals-container {
+                margin-top: 30px;
+                width: 100%;
+                display: flex;
+                justify-content: flex-end;
+              }
+              .totals-table {
+                width: ${parseInt(billWidth) >= 140 ? '40%' : parseInt(billWidth) > 100 ? '50%' : '100%'};
+              }
+              .total-row {
+                display: flex;
+                justify-content: space-between;
+                padding: 6px 0;
+              }
+              .grand-total {
+                font-size: ${parseInt(billWidth) >= 140 ? '24px' : parseInt(billWidth) > 100 ? '20px' : '16px'};
+                font-weight: bold;
+                border-top: 2px solid #000;
+                border-bottom: 2px solid #000;
+                margin-top: 10px;
+                padding: 10px 0;
+                color: #000;
+              }
+              .footer {
+                text-align: center;
+                margin-top: 50px;
+                padding-top: 20px;
+                border-top: 1px solid #eee;
+                font-size: 12px;
+                color: #666;
+              }
+              .thank-you {
+                font-weight: bold;
+                font-size: 16px;
+                color: #000;
+                margin-bottom: 8px;
+              }
+              .signature-section {
+                display: ${parseInt(billWidth) >= 140 ? 'flex' : 'none'};
+                justify-content: space-between;
+                margin-top: 60px;
+                padding: 0 10px;
+              }
+              .signature-box {
+                text-align: center;
+                width: 150px;
+                border-top: 1px solid #000;
+                padding-top: 5px;
+                font-size: 12px;
+              }
+              @media print {
+                body { margin: 0; padding: ${parseInt(billWidth) >= 140 ? '15mm' : parseInt(billWidth) > 100 ? '10mm' : '4mm'}; }
+              }
+            </style>
         </head>
         <body>
           <div class="header">
@@ -255,13 +274,18 @@ export default function InvoicesPage() {
             </div>
           </div>
 
-          <div class="footer">
-            <div class="thank-you">Thank You for Shopping!</div>
-            <div>Visit us again at SONAKSHI BOUTIQUE</div>
-            <div style="margin-top: 10px; font-size: 10px; color: #999;">*** DUPLICATE INVOICE ***</div>
-          </div>
+            <div class="footer">
+              <div class="thank-you">Thank You for Shopping!</div>
+              <div>Visit us again at SONAKSHI BOUTIQUE</div>
+              <div style="margin-top: 10px; font-size: 10px; color: #999;">*** DUPLICATE INVOICE ***</div>
+            </div>
 
-          <script>
+            <div class="signature-section">
+              <div class="signature-box">Customer's Signature</div>
+              <div class="signature-box">Authorized Signatory</div>
+            </div>
+
+            <script>
             window.onload = () => {
               window.print();
               setTimeout(() => { window.close(); }, 500);
