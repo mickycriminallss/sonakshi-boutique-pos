@@ -212,7 +212,7 @@ export default function InvoicesPage() {
             <div style="font-size: 12px; font-style: italic; margin-bottom: 8px;">From our hands to your heart</div>
             <div class="business-info">
               Fashion & Lifestyle | Owner: Sonali<br>
-              Tel: +91 7413956875 | GSTIN: 29ABCDE1234F1Z5
+              Mob.: +91 7413956875 
             </div>
           </div>
 
