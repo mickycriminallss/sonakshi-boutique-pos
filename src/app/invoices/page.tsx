@@ -70,8 +70,10 @@ export default function InvoicesPage() {
           <title>Invoice ${sale.invoiceNumber}</title>
             <style>
               @page {
-                size: ${billWidth} ${billHeight};
-                margin: 0;
+                size: A5;
+                width: 148mm;
+                height: 210mm;
+                margin: 10mm;
               }
               * {
                 box-sizing: border-box;
