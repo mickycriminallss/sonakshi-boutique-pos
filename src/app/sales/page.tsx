@@ -13,6 +13,13 @@ import { toast } from 'sonner';
 import { Trash2, Plus, Minus, Printer, Tag, Settings } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -31,6 +38,7 @@ export default function SalesPage() {
   const [discountPercent, setDiscountPercent] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
   const [billWidth, setBillWidth] = useState('80');
+  const [billHeight, setBillHeight] = useState('auto');
   const [labelWidth, setLabelWidth] = useState('38');
   const [labelHeight, setLabelHeight] = useState('25');
   const [showBillSizeDialog, setShowBillSizeDialog] = useState(false);
@@ -38,9 +46,11 @@ export default function SalesPage() {
   
   useEffect(() => {
     const savedBillWidth = localStorage.getItem('billPrintWidth');
+    const savedBillHeight = localStorage.getItem('billPrintHeight');
     const savedLabelWidth = localStorage.getItem('labelWidth');
     const savedLabelHeight = localStorage.getItem('labelHeight');
     if (savedBillWidth) setBillWidth(savedBillWidth.replace('mm', ''));
+    if (savedBillHeight) setBillHeight(savedBillHeight.replace('mm', ''));
     if (savedLabelWidth) setLabelWidth(savedLabelWidth.replace('mm', ''));
     if (savedLabelHeight) setLabelHeight(savedLabelHeight.replace('mm', ''));
   }, []);
@@ -128,11 +138,12 @@ export default function SalesPage() {
       setShowBillSizeDialog(true);
     };
 
-    const handleBillSizeConfirm = () => {
-      localStorage.setItem('billPrintWidth', `${billWidth}mm`);
-      setShowBillSizeDialog(false);
-      setShowCheckout(true);
-    };
+      const handleBillSizeConfirm = () => {
+        localStorage.setItem('billPrintWidth', `${billWidth}mm`);
+        localStorage.setItem('billPrintHeight', billHeight === 'auto' ? 'auto' : `${billHeight}mm`);
+        setShowBillSizeDialog(false);
+        setShowCheckout(true);
+      };
 
     const [showInteractiveBill, setShowInteractiveBill] = useState(false);
     const [completedSale, setCompletedSale] = useState<Sale | null>(null);
@@ -190,6 +201,7 @@ export default function SalesPage() {
     const now = new Date();
     
     const billWidth = localStorage.getItem('billPrintWidth') || '80mm';
+    const billHeight = localStorage.getItem('billPrintHeight') || 'auto';
 
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -204,7 +216,7 @@ export default function SalesPage() {
           <title>Invoice ${invoice}</title>
           <style>
             @page {
-              size: ${billWidth} auto;
+              size: ${billWidth} ${billHeight};
               margin: 0;
             }
             body {
@@ -213,6 +225,7 @@ export default function SalesPage() {
               line-height: 1.2;
               padding: 5mm;
               width: ${billWidth};
+              height: ${billHeight === 'auto' ? 'auto' : billHeight};
               background: white;
               color: black;
               margin: 0 auto;
@@ -462,10 +475,24 @@ export default function SalesPage() {
 
   const handleSaveSettings = () => {
     localStorage.setItem('billPrintWidth', `${billWidth}mm`);
+    localStorage.setItem('billPrintHeight', billHeight === 'auto' ? 'auto' : `${billHeight}mm`);
     localStorage.setItem('labelWidth', `${labelWidth}mm`);
     localStorage.setItem('labelHeight', `${labelHeight}mm`);
     setShowSettings(false);
     toast.success('Print settings saved');
+  };
+
+  const setPaperPreset = (preset: string) => {
+    if (preset === 'thermal-80') {
+      setBillWidth('80');
+      setBillHeight('auto');
+    } else if (preset === 'thermal-58') {
+      setBillWidth('58');
+      setBillHeight('auto');
+    } else if (preset === 'a5') {
+      setBillWidth('148');
+      setBillHeight('210');
+    }
   };
 
     if (showInteractiveBill && completedSale) {
@@ -607,25 +634,52 @@ export default function SalesPage() {
                 Print Settings
               </Button>
             </DialogTrigger>
-            <DialogContent className="bg-slate-900 border-slate-700">
-              <DialogHeader>
-                <DialogTitle className="text-white">Printer Configuration</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-6 pt-4">
-                <div>
-                  <Label htmlFor="billWidth" className="text-slate-300">Bill Width (mm)</Label>
-                  <Input
-                    id="billWidth"
-                    type="number"
-                    value={billWidth}
-                    onChange={(e) => setBillWidth(e.target.value)}
-                    className="bg-slate-800 border-slate-600 text-white mt-2"
-                    placeholder="80"
-                  />
-                  <p className="text-xs text-slate-500 mt-1">Standard: 80mm, 58mm</p>
-                </div>
-                <div>
-                  <Label className="text-slate-300">Barcode Label Size</Label>
+              <DialogContent className="bg-slate-900 border-slate-700">
+                <DialogHeader>
+                  <DialogTitle className="text-white">Printer Configuration</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-6 pt-4">
+                  <div className="space-y-4">
+                    <Label className="text-slate-300">Invoice Paper Size</Label>
+                    <Select onValueChange={setPaperPreset}>
+                      <SelectTrigger className="bg-slate-800 border-slate-600 text-white">
+                        <SelectValue placeholder="Select Paper Preset" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-900 border-slate-700 text-white">
+                        <SelectItem value="thermal-80">Thermal 80mm</SelectItem>
+                        <SelectItem value="thermal-58">Thermal 58mm</SelectItem>
+                        <SelectItem value="a5">A5 Paper (148x210mm)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="billWidth" className="text-slate-400 text-xs">Width (mm)</Label>
+                        <Input
+                          id="billWidth"
+                          type="number"
+                          value={billWidth}
+                          onChange={(e) => setBillWidth(e.target.value)}
+                          className="bg-slate-800 border-slate-600 text-white mt-1"
+                          placeholder="80"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="billHeight" className="text-slate-400 text-xs">Height (mm/auto)</Label>
+                        <Input
+                          id="billHeight"
+                          value={billHeight}
+                          onChange={(e) => setBillHeight(e.target.value)}
+                          className="bg-slate-800 border-slate-600 text-white mt-1"
+                          placeholder="auto"
+                        />
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-slate-500 italic">Enter 'auto' for continuous thermal paper</p>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-slate-300">Barcode Label Size</Label>
                   <div className="grid grid-cols-2 gap-4 mt-2">
                     <div>
                       <Label htmlFor="labelWidth" className="text-slate-400 text-xs">Width (mm)</Label>
@@ -955,33 +1009,59 @@ export default function SalesPage() {
         <div ref={printRef} style={{ display: 'none' }} />
 
         {/* Bill Size Configuration Dialog */}
-        <Dialog open={showBillSizeDialog} onOpenChange={setShowBillSizeDialog}>
-          <DialogContent className="bg-slate-900 border-slate-700 text-white">
-            <DialogHeader>
-              <DialogTitle>Configure Bill Size</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="bill-width" className="text-slate-300">Bill Width (mm)</Label>
-                <Input
-                  id="bill-width"
-                  type="number"
-                  value={billWidth}
-                  onChange={(e) => setBillWidth(e.target.value)}
-                  className="bg-slate-800 border-slate-600 text-white"
-                  placeholder="80"
-                />
-                <p className="text-xs text-slate-400">Common sizes: 58mm, 80mm, 110mm</p>
+          <Dialog open={showBillSizeDialog} onOpenChange={setShowBillSizeDialog}>
+            <DialogContent className="bg-slate-900 border-slate-700 text-white">
+              <DialogHeader>
+                <DialogTitle>Configure Bill Size</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-4">
+                  <Label className="text-slate-300">Quick Presets</Label>
+                  <Select onValueChange={setPaperPreset}>
+                    <SelectTrigger className="bg-slate-800 border-slate-600 text-white">
+                      <SelectValue placeholder="Select Paper Preset" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-900 border-slate-700 text-white">
+                      <SelectItem value="thermal-80">Thermal 80mm</SelectItem>
+                      <SelectItem value="thermal-58">Thermal 58mm</SelectItem>
+                      <SelectItem value="a5">A5 Paper (148x210mm)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="bill-width" className="text-slate-300 text-xs">Width (mm)</Label>
+                      <Input
+                        id="bill-width"
+                        type="number"
+                        value={billWidth}
+                        onChange={(e) => setBillWidth(e.target.value)}
+                        className="bg-slate-800 border-slate-600 text-white mt-1"
+                        placeholder="80"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="bill-height" className="text-slate-300 text-xs">Height (mm/auto)</Label>
+                      <Input
+                        id="bill-height"
+                        value={billHeight}
+                        onChange={(e) => setBillHeight(e.target.value)}
+                        className="bg-slate-800 border-slate-600 text-white mt-1"
+                        placeholder="auto"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-slate-500 italic">Enter 'auto' for continuous thermal paper</p>
+                </div>
+                <Button
+                  onClick={handleBillSizeConfirm}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 mt-2"
+                >
+                  Continue to Checkout
+                </Button>
               </div>
-              <Button
-                onClick={handleBillSizeConfirm}
-                className="w-full bg-emerald-600 hover:bg-emerald-700"
-              >
-                Continue to Checkout
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
       </div>
     );
   }

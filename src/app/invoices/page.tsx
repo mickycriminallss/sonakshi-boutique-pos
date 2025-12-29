@@ -55,6 +55,7 @@ export default function InvoicesPage() {
 
   const handlePrintInvoice = (sale: Sale) => {
     const billWidth = localStorage.getItem('billPrintWidth') || '80mm';
+    const billHeight = localStorage.getItem('billPrintHeight') || 'auto';
 
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -69,7 +70,7 @@ export default function InvoicesPage() {
           <title>Invoice ${sale.invoiceNumber}</title>
           <style>
             @page {
-              size: ${billWidth} auto;
+              size: ${billWidth} ${billHeight};
               margin: 0;
             }
             body {
@@ -78,6 +79,7 @@ export default function InvoicesPage() {
               line-height: 1.2;
               padding: 5mm;
               width: ${billWidth};
+              height: ${billHeight === 'auto' ? 'auto' : billHeight};
               background: white;
               color: black;
               margin: 0 auto;
